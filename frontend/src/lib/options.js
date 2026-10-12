@@ -1,0 +1,11 @@
+// Shared option lists used by the questionnaire and pet form (categorical selectors, per NFR Usability).
+export const HOUSING = ['Studio', 'Apartment', 'House (no yard)', 'House (with yard)']
+export const HOUSEHOLD = ['Live alone', 'Partner', 'Children (<12)', 'Elderly', 'Other pets']
+export const ACTIVITY = ['Very quiet', 'Quiet', 'Moderate', 'Active', 'Very active']
+export const CARE_HOURS = ['<1hr', '1-2hr', '2-4hr', '4+hr']
+export const EXPERIENCE = ['First time', 'Some', 'Experienced']
+export const SPECIES = ['Dog', 'Cat']
+export const SIZES = ['Small', 'Medium', 'Large']
+export const TEMPERAMENTS = ['Calm', 'Friendly', 'Playful', 'Independent', 'Shy']
+export const ENERGY = ['Low', 'Moderate', 'High']
+export const APP_STATUS = ['Pending Review', 'Interview Scheduled', 'Rejected', 'Adoption Completed', 'Failed Adoption', 'Cancelled']
