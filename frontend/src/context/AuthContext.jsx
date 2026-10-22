@@ -12,10 +12,18 @@ export const useAuth = () => useContext(AuthContext)
 // FR-01: role is derived from the email domain, never chosen by the user.
 export function roleFromEmail(email) {
   const e = email.toLowerCase()
+  
+  // 1. Check Admins (exact email match)
   const admins = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
   if (admins.includes(e)) return 'admin'
-  const domains = (import.meta.env.VITE_SHELTER_DOMAINS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
-  return domains.includes(e.split('@')[1]) ? 'shelter' : 'adopter'
+  
+  // 2. Check Shelters (exact email OR domain match)
+  const shelters = (import.meta.env.VITE_SHELTER_DOMAINS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+  
+  // This checks if the email is exactly "ejwanjiku@gmail.com" OR if it ends with "@kspca.or.ke"
+  const isShelter = shelters.some(entry => e === entry || e.endsWith(`@${entry}`))
+  
+  return isShelter ? 'shelter' : 'adopter'
 }
 
 export function AuthProvider({ children }) {
@@ -32,10 +40,15 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
-    const profile = { name, email, role: roleFromEmail(email), createdAt: serverTimestamp() }
+    
+    // The role is calculated here and saved to Firestore immediately
+    const role = roleFromEmail(email)
+    const profile = { name, email, role: role, createdAt: serverTimestamp() }
+    
     await setDoc(doc(db, 'users', cred.user.uid), profile)
     setUser({ uid: cred.user.uid, ...profile })
   }
+  
   const login = (email, password) => signInWithEmailAndPassword(auth, email, password)
   const logout = () => signOut(auth)
 

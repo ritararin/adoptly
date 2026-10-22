@@ -12,6 +12,9 @@ import ShelterListings from './pages/ShelterListings'
 import ShelterApplications from './pages/ShelterApplications'
 import ApplicationReview from './pages/ApplicationReview'
 import Admin from './pages/Admin'
+import InterviewSchedule from './pages/InterviewSchedule';
+import ShelterAnalytics from './pages/ShelterAnalytics'
+import Notifications from './pages/Notifications'
 
 const HOME = { adopter: '/matches', shelter: '/shelter/listings', admin: '/admin' }
 function Home() {
@@ -36,6 +39,10 @@ export default function App() {
         <Route path="/shelter/applications" element={guard(['shelter'], <ShelterApplications />)} />
         <Route path="/shelter/applications/:id" element={guard(['shelter'], <ApplicationReview />)} />
         <Route path="/admin" element={guard(['admin'], <Admin />)} />
+        <Route path="/applications" element={guard(['adopter'], <MyApplications />)} /> 
+        <Route path="/interviews" element={guard(['adopter'], <InterviewSchedule />)} />
+        <Route path="/analytics" element={guard(['shelter'], <ShelterAnalytics />)} />
+        <Route path="/notifications" element={guard(['adopter', 'shelter'], <Notifications />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
