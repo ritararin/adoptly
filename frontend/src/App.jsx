@@ -40,8 +40,7 @@ export default function App() {
         <Route path="/shelter/applications/:id" element={guard(['shelter'], <ApplicationReview />)} />
         <Route path="/admin" element={guard(['admin'], <Admin />)} />
         <Route path="/applications" element={guard(['adopter'], <MyApplications />)} /> 
-        <Route path="/interviews" element={guard(['adopter'], <InterviewSchedule />)} />
-        <Route path="/analytics" element={guard(['shelter'], <ShelterAnalytics />)} />
+<Route path="/interviews" element={guard(['adopter', 'shelter'], <InterviewSchedule />)} />        <Route path="/analytics" element={guard(['shelter'], <ShelterAnalytics />)} />
         <Route path="/notifications" element={guard(['adopter', 'shelter'], <Notifications />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

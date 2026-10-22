@@ -1,7 +1,75 @@
-import { Bell, Info, CheckCircle2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { listApplications, listPets } from '../lib/api'
+import { Bell, Info, CheckCircle2, FileText, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function Notifications() {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [notifications, setNotifications] = useState([])
+
+  useEffect(() => {
+    if (!user?.uid) return
+
+    const generateNotifications = async () => {
+      try {
+        const apps = await listApplications({ shelterId: user.uid })
+        const pets = await listPets({ shelterId: user.uid })
+        
+        const notifs = []
+
+        // 1. Check for pending applications
+        const pendingApps = apps.filter(a => a.status === 'Pending Review')
+        if (pendingApps.length > 0) {
+          notifs.push({
+            id: 'pending-apps',
+            title: 'Action Required',
+            message: `You have ${pendingApps.length} new application(s) waiting for your review.`,
+            type: 'alert',
+            icon: FileText,
+            color: 'text-gold-ink bg-gold-soft',
+            time: 'Just now'
+          })
+        }
+
+        // 2. Check for successful adoptions
+        const adoptedPets = pets.filter(p => p.adoptionStatus === 'Adopted')
+        if (adoptedPets.length > 0) {
+          notifs.push({
+            id: 'adopted-pets',
+            title: 'Successful Adoption',
+            message: `Great job! You have successfully rehomed ${adoptedPets.length} pet(s).`,
+            type: 'success',
+            icon: CheckCircle2,
+            color: 'text-forest bg-forest-wash',
+            time: 'Recently'
+          })
+        }
+
+        // 3. Welcome message (always shows)
+        notifs.push({
+          id: 'welcome',
+          title: 'Welcome to Adoptly',
+          message: 'Your shelter dashboard is ready. Ensure all your pet listings have clear photos.',
+          type: 'info',
+          icon: Info,
+          color: 'text-ink-muted bg-cream-soft',
+          time: 'System'
+        })
+
+        setNotifications(notifs)
+      } catch (error) {
+        console.error("Failed to load notifications:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    generateNotifications()
+  }, [user?.uid])
+
+  if (loading) return <div className="flex h-64 items-center justify-center text-forest"><Loader2 className="animate-spin" size={32} /></div>
+
   return (
     <div>
       <div className="mb-8">
@@ -11,41 +79,24 @@ export default function Notifications() {
       </div>
 
       <div className="space-y-4 max-w-2xl">
-        {/* Example Notification 1 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-4 rounded-[20px] border border-line bg-white p-5 shadow-soft">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-forest-wash text-forest">
-            <CheckCircle2 size={20} />
-          </div>
-          <div>
-            <h3 className="font-bold text-ink-head text-sm">Application Approved</h3>
-            <p className="text-sm text-ink-muted mt-1">Your application for Luna has been approved! The shelter has scheduled a virtual interview.</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-whisper mt-2">2 hours ago</p>
-          </div>
-        </motion.div>
-
-        {/* Example Notification 2 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex items-start gap-4 rounded-[20px] border border-line bg-white p-5 shadow-soft">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gold-soft text-gold-ink">
-            <Bell size={20} />
-          </div>
-          <div>
-            <h3 className="font-bold text-ink-head text-sm">New Matches Available</h3>
-            <p className="text-sm text-ink-muted mt-1">Our AI found 3 new pets that match your lifestyle profile. Check them out!</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-whisper mt-2">1 day ago</p>
-          </div>
-        </motion.div>
-
-        {/* Example Notification 3 */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex items-start gap-4 rounded-[20px] border border-line bg-white p-5 shadow-soft">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cream-soft text-ink-muted">
-            <Info size={20} />
-          </div>
-          <div>
-            <h3 className="font-bold text-ink-head text-sm">Welcome to Adoptly</h3>
-            <p className="text-sm text-ink-muted mt-1">Complete your lifestyle questionnaire to get personalized pet recommendations.</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-whisper mt-2">3 days ago</p>
-          </div>
-        </motion.div>
+        {notifications.map((notif, index) => (
+          <motion.div 
+            key={notif.id}
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: index * 0.1 }}
+            className="flex items-start gap-4 rounded-[20px] border border-line bg-white p-5 shadow-soft"
+          >
+            <div className={`flex size-10 shrink-0 items-center justify-center rounded-full ${notif.color}`}>
+              <notif.icon size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-ink-head text-sm">{notif.title}</h3>
+              <p className="text-sm text-ink-muted mt-1">{notif.message}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-whisper mt-2">{notif.time}</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   )
