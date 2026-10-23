@@ -1,345 +1,519 @@
-````markdown
-# Adoptly: Explainable Pet-Adopter Compatibility Matching
+# Adoptly: Explainable ML Pet Adoption Platform
 
-## Overview
+Adoptly is a full-stack pet adoption platform that uses machine learning to recommend pets based on an adopter's lifestyle, living environment, and ability to meet a pet's needs. It combines Random Forest Regression with SHAP (SHapley Additive Explanations) to generate compatibility scores and explain the factors contributing to recommendations.
 
-| Questions | Objectives | Key Concepts / Tools |
-|---|---|---|
-| What is Adoptly? | Help adopters find pets compatible with their lifestyles and living circumstances. | Pet adoption, web application |
-| Why build it? | Support informed adoption decisions and structured shelter review. | Compatibility matching, adoption applications |
-| How does it work? | Predict compatibility using adopter and pet attributes. | Random Forest Regression, Scikit-learn |
-| How are predictions explained? | Show factors contributing to the predicted compatibility score. | SHAP, TreeSHAP, Explainable AI |
-| What technologies does it use? | Provide a web platform for adopters and shelters. | React, Vite, Tailwind CSS, Firebase, Python |
-| How can developers contribute? | Help developers set up, understand, and extend the project. | Git, GitHub, REST API |
+## Table of Contents
 
----
+- [Problem Statement](#problem-statement)
+- [Objectives](#objectives)
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Project Structure](#project-structure)
+- [Installation and Setup](#installation-and-setup)
+- [Environment Configuration](#environment-configuration)
+- [Running the Application](#running-the-application)
+- [Testing](#testing)
+- [Git Workflow and Project Management](#git-workflow-and-project-management)
+- [Troubleshooting](#troubleshooting)
+- [Limitations](#limitations)
+- [License and Access Statement](#license-and-access-statement)
 
-## What Is Adoptly?
+## Problem Statement
 
-**Adoptly** is a web-based pet adoption platform designed to help adopters identify pets compatible with their lifestyles, household circumstances, and care capabilities.
+Traditional pet adoption platforms primarily function as listing services. Matching adopters with pets often depends on manual screening and subjective judgment, which may overlook important compatibility factors such as activity level, housing conditions, available care time, and previous pet experience.
 
-The system uses a **Random Forest Regression** model to generate a compatibility score between an adopter and a pet. It also uses **SHAP-based explanations** to help users understand the factors contributing to the model's prediction.
+Adoptly addresses this problem through a data-driven recommendation system that estimates compatibility between adopters and available pets. A Random Forest Regression model generates compatibility scores, while SHAP helps explain the factors contributing to each prediction. Shelter oversight workflows support responsible application review and adoption decisions.
 
-In addition to compatibility matching, Adoptly supports pet listings, user authentication, adoption applications, shelter verification, and virtual interview scheduling through Google Meet.
+The system provides decision support; its recommendations do not replace shelter assessment or guarantee successful adoptions.
 
-The project aims to make pet-adoption matching more structured, understandable, and supportive of responsible adoption decisions.
+## Objectives
 
-## Why Adoptly?
-
-Choosing a pet involves considering more than appearance or preference. An adopter's living arrangements, activity level, available care time, household composition, and previous pet ownership experience can affect whether a particular pet is suitable for them.
-
-Adoptly combines adopter information and pet characteristics to estimate compatibility. Its explainability component provides insight into the prediction, while shelter review and verification support the adoption application process.
+1. Develop a platform where adopters can discover pets and shelters can manage pet listings.
+2. Estimate adopter-pet compatibility using Random Forest Regression.
+3. Explain recommendations using SHAP feature contributions.
+4. Support adoption applications and shelter review workflows.
+5. Support interview scheduling through Google Calendar and Google Meet integration.
 
 ## Key Features
 
-- **User authentication:** Supports account access through Firebase Authentication.
-- **Pet listings:** Allows shelters to provide information about available pets.
-- **Compatibility prediction:** Uses Random Forest Regression to estimate adopter-pet compatibility.
-- **Explainable predictions:** Uses SHAP / TreeSHAP to identify factors contributing to predictions.
-- **Adoption applications:** Enables adopters to apply to adopt listed pets.
-- **Shelter verification:** Supports review of adopter information and applications.
-- **Virtual interviews:** Supports online adoption interviews through Google Meet integration.
-- **Role-based functionality:** Organizes access for adopters, shelter staff, and administrators.
+- **User authentication:** Firebase Authentication for account registration and login.
+- **Role-based workflows:** Separate functionality for adopters, shelters, and authorized administrators.
+- **Pet management:** Create and manage pet listings and associated information.
+- **Compatibility scoring:** Estimate compatibility using adopter and pet attributes.
+- **Explainable recommendations:** Display contributing factors using SHAP.
+- **Adoption applications:** Support application submission and shelter review.
+- **Image storage:** Supabase Storage integration for pet images.
+- **Interview scheduling:** Google Calendar integration intended to support interview scheduling and Google Meet link generation.
 
----
+Feature availability depends on the implementation and configuration of the current version.
 
-## Technologies Used
+## System Architecture
 
-| Component | Technology |
-|---|---|
-| Frontend | React, Vite |
-| Styling | Tailwind CSS |
-| Authentication | Firebase Authentication |
-| Database | Cloud Firestore |
-| Machine Learning | Python, Scikit-learn |
-| Regression Model | Random Forest Regression |
-| Explainable AI | SHAP / TreeSHAP |
-| Backend Integration | Python REST API |
-| Interview Scheduling | Google Meet API |
-| Version Control | Git and GitHub |
+Adoptly is organized as a monorepo containing the frontend, machine learning service, and backend functions.
 
----
+| Component | Technology | Responsibility |
+|---|---|---|
+| Frontend | React, Vite, Tailwind CSS, Framer Motion | User interface and client-side workflows |
+| Authentication | Firebase Authentication | User registration and login |
+| Database | Cloud Firestore | Application data storage |
+| Backend | Firebase Cloud Functions, Node.js | Server-side workflows and integrations |
+| Machine Learning | Python, Flask, scikit-learn | Compatibility prediction |
+| Explainable AI | SHAP | Explanation of model predictions |
+| Image Storage | Supabase Storage | Pet image storage |
+| Scheduling | Google Calendar API | Calendar and meeting-related workflows |
 
-## Installation
+### Machine Learning Workflow
+
+1. Retrieve adopter and pet attributes.
+2. Prepare the input features required by the trained model.
+3. Use Random Forest Regression to estimate compatibility.
+4. Use SHAP to calculate feature contributions.
+5. Return the compatibility score and explanation to the calling application.
+6. Display recommendations to the adopter.
+
+The model produces an estimated compatibility score, not a guarantee of adoption success.
+
+## Technology Stack
+
+- React
+- Vite
+- Tailwind CSS
+- Framer Motion
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Cloud Functions
+- Python
+- Flask
+- pandas
+- NumPy
+- scikit-learn
+- SHAP
+- Supabase Storage
+- Google Calendar API
+- Git and GitHub
+
+Exact dependency versions are defined in the project's dependency files.
+
+## Prerequisites
+
+Install the following tools before setting up the project:
+
+- Git
+- Node.js and npm
+- Python 3.11 or a version supported by the ML service dependencies
+- Firebase CLI
+- A Firebase project or a configured Firebase Emulator Suite
+- A Supabase project if image storage is enabled
+- Google Cloud credentials and an enabled Google Calendar API if scheduling integration is enabled
+
+Verify your installations:
+
+    git --version
+    node --version
+    npm --version
+    python --version
+    firebase --version
+
+## Project Structure
+
+The repository follows this general structure. Some paths may differ depending on the current branch.
+
+    adoptly/
+    ├── frontend/
+    │   └── React and Vite application
+    ├── functions/
+    │   └── Firebase Cloud Functions
+    ├── ml-service/
+    │   ├── app.py
+    │   ├── requirements.txt
+    │   ├── model/
+    │   └── data/
+    ├── firebase.json
+    ├── .gitignore
+    └── README.md
+
+The `model/` and `data/` directories contain the model artifacts and supporting data required by the ML service, where applicable.
+
+Do not commit environment files, service-account keys, private credentials, or other sensitive information.
+
+## Installation and Setup
 
 ### 1. Clone the Repository
 
-```bash
-git clone https://github.com/ritararin/adoptly.git
-cd adoptly
-```
+    git clone https://github.com/ritararin/adoptly.git
+    cd adoptly
 
-### 2. Navigate the Codebase
+If the repository is private, GitHub access permissions are required.
 
-The project is intended to separate the user interface, backend services, machine learning components, and documentation.
+### 2. Set Up the Frontend
 
-An illustrative directory structure is shown below. Refer to the actual repository for the current implementation.
+    cd frontend
+    npm install
 
-```text
-adoptly/
-├── frontend/       # React user interface
-├── backend/        # Backend services and API integration
-├── ml/             # Compatibility model and explainability
-├── docs/           # Project documentation
-├── .gitignore
-└── README.md
-```
+Create a `.env.local` file in the `frontend/` directory and configure the required environment variables.
 
-### 3. Set Up the Frontend
+### 3. Set Up the Machine Learning Service
 
-Ensure that Node.js and npm are installed.
+From the repository root:
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Vite will display the local development URL in the terminal.
-
-### 4. Configure Firebase
-
-Create or select a Firebase project and configure Firebase Authentication and Cloud Firestore.
-
-Add the required Firebase configuration to the frontend environment file, using the variable names expected by the application.
-
-Example:
-
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-```
-
-Replace the example values with your Firebase configuration. Confirm the variable names against the existing application code.
-
-**Security note:** Do not commit private credentials, service-account files, or environment files containing secrets to GitHub.
-
-### 5. Set Up the Backend
-
-If the backend is maintained as a separate Python service, ensure Python is installed and navigate to its directory.
-
-```bash
-cd backend
-python -m venv venv
-```
+    cd ml-service
+    python -m venv venv
 
 Activate the virtual environment.
 
-**Windows:**
+**Windows PowerShell:**
 
-```bash
-venv\Scripts\activate
-```
+    .\venv\Scripts\Activate.ps1
+
+**Windows Command Prompt:**
+
+    venv\Scripts\activate.bat
 
 **macOS/Linux:**
 
-```bash
-source venv/bin/activate
-```
+    source venv/bin/activate
 
-Install dependencies if a `requirements.txt` file exists:
+Install the dependencies:
 
-```bash
-pip install -r requirements.txt
-```
+    pip install -r requirements.txt
 
-Start the backend using the entry point documented in the current implementation. The exact command depends on the framework and server configuration.
+Ensure that the trained model, feature definitions, preprocessing artifacts, and required data files are present in the expected locations.
 
-### 6. Set Up the Machine Learning Environment
+### 4. Set Up Firebase Cloud Functions
 
-If the machine learning components are maintained separately, create a Python virtual environment.
+From the repository root:
 
-```bash
-cd ml
-python -m venv venv
-```
+    cd functions
+    npm install
 
-Activate the environment and install the required packages.
+If a build script is defined in `functions/package.json`, run:
 
-```bash
-pip install pandas numpy scikit-learn shap
-```
+    npm run build
 
-Install any additional dependencies specified by the project. Ensure the trained model and preprocessing steps are available to the prediction service.
+### 5. Configure Firebase
 
----
+From the repository root, authenticate with Firebase:
 
-## Usage
+    firebase login
 
-Once the required services and environment variables have been configured, the intended workflow is:
+Select the appropriate Firebase project when using a real project:
 
-1. Start the frontend development server.
-2. Start the backend and machine learning services, if running separately.
-3. Open the application using the local URL provided by Vite.
-4. Create an account or sign in.
-5. Browse available pet listings.
-6. Provide the adopter information required for compatibility matching.
-7. View the predicted compatibility score and its explanation.
-8. Submit an adoption application for a suitable pet.
-9. Allow shelter staff to review the application and verify the provided information.
-10. Schedule a virtual interview through Google Meet when required by the adoption workflow.
+    firebase use YOUR_FIREBASE_PROJECT_ID
 
-Some steps depend on the relevant features being implemented and configured in the current version.
+Replace the placeholder with your actual Firebase project ID.
 
----
+For local development, check `firebase.json` to confirm which emulator services are configured.
 
-## How Compatibility Matching Works
+## Environment Configuration
 
-Adoptly uses **Random Forest Regression** to predict a continuous compatibility score based on adopter and pet attributes.
+Environment files contain project-specific configuration and credentials. Keep them local and exclude them from version control.
 
-### Input Attributes
+### Frontend Configuration
 
-**Adopter attributes may include:**
+Create `frontend/.env.local`:
 
-- Housing type and available living space
-- Activity level
-- Available time for pet care
-- Previous pet ownership experience
-- Household composition
+    # Firebase configuration
+    VITE_FIREBASE_API_KEY=your_firebase_api_key
+    VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+    VITE_FIREBASE_PROJECT_ID=your_project_id
+    VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+    VITE_FIREBASE_APP_ID=your_app_id
 
-**Pet attributes may include:**
+    # Supabase Storage
+    VITE_SUPABASE_URL=https://your-project.supabase.co
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-- Species, age, and size
-- Energy level
-- Care requirements
-- Health-related information
-- Other relevant characteristics
+    # Machine learning configuration
+    VITE_USE_MOCK_ML=true
+    VITE_ML_ENDPOINT=
 
-### Prediction Process
+Replace the example values with the credentials and settings for your environment.
 
-1. Collect adopter and pet attributes.
-2. Preprocess the input data using the transformations required by the trained model.
-3. Pass the processed features to the Random Forest Regression model.
-4. Generate a compatibility score on the intended 0–1 scale.
-5. Use SHAP / TreeSHAP to identify features contributing to the prediction.
-6. Present the score and supporting explanations to the user.
+**Machine learning mode:**
 
-The compatibility score is a model estimate, not a guarantee of a successful adoption. It should support, rather than replace, adopter judgment and shelter review.
+- `VITE_USE_MOCK_ML=true` selects the mock-scoring path if supported by the current implementation.
+- `VITE_USE_MOCK_ML=false` disables the mock setting but does not automatically connect the frontend to the trained model.
+- Configure `VITE_ML_ENDPOINT` or the appropriate backend function endpoint according to the integration implemented in the current branch.
 
-## Explainable AI
+Restart the Vite development server after modifying environment variables.
 
-Adoptly incorporates **SHAP (SHapley Additive exPlanations)** to help interpret model predictions.
+**Security note:** Vite variables prefixed with `VITE_` are exposed to client-side code. Never place service-account private keys or other server-side secrets in these variables.
 
-SHAP estimates how individual features contribute to a prediction relative to a reference prediction. This helps users understand which adopter or pet characteristics influenced a particular compatibility score.
+### Firebase and Google Calendar Configuration
 
-For example, the explanation may highlight the contribution of activity level, available care time, or pet care requirements when those features are included in the model.
+Configure Firebase project settings and any required integration secrets using the supported secret-management approach.
 
----
+If local development requires a Google service-account JSON key, store it securely outside version control and follow the authentication method implemented by the backend.
 
-## Google Meet Integration
+**Windows PowerShell example:**
 
-Adoptly is designed to support virtual interviews between adopters and shelter representatives.
+    $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\service-account-key.json"
 
-To configure Google Meet integration:
+**macOS/Linux example:**
 
-1. Create a project in the [Google Cloud Console](https://console.cloud.google.com/).
-2. Enable the required Google Meet API.
-3. Configure the Google Auth Platform.
-4. Configure the OAuth consent screen and authorized test users as appropriate.
-5. Create the required credentials.
-6. Implement meeting creation in the backend.
-7. Store the resulting meeting URL with the relevant interview or application record.
+    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
 
-Keep OAuth client secrets and credential files on the backend. Never commit them to the repository or expose them in the React frontend.
+Enable the Google Calendar API in the relevant Google Cloud project if calendar integration is being tested.
 
-For API details, refer to the [Google Meet API documentation](https://developers.google.com/meet/api/guides/overview).
+Do not commit service-account credentials, private keys, or production secrets.
 
----
+### Machine Learning Configuration
 
-## Example Commands
+The Flask service loads the model artifacts and supporting files specified by `ml-service/app.py`.
 
-### Run the Frontend
+Confirm that the expected files exist and that the paths in the application match the repository structure. Missing model artifacts or incompatible dependencies may prevent the service from starting.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Running the Application
 
-### Install Python Dependencies
+Local development may require three separate terminals.
 
-```bash
-pip install -r requirements.txt
-```
+### Terminal 1: Start the ML Service
 
-Run this command from the directory containing the relevant `requirements.txt` file.
+From the repository root:
 
-### Check Git Status
+    cd ml-service
 
-```bash
-git status
-```
+Activate the virtual environment, then run:
 
-### Commit and Push README Changes
+    python app.py
 
-```bash
-git add README.md
-git commit -m "Update project README"
-git push
-```
+The expected local address in the current configuration is:
 
----
+    http://127.0.0.1:8080
 
-## Project Structure and Navigation
+Confirm the actual address and port from the terminal output.
 
-| Area | Purpose |
+### Terminal 2: Start Firebase Emulators
+
+From the repository root:
+
+    firebase emulators:start
+
+The Emulator UI is commonly available at:
+
+    http://127.0.0.1:4000
+
+Use the address and ports reported by the emulator. Ensure that the frontend is configured to connect to the emulators during local development.
+
+### Terminal 3: Start the Frontend
+
+From the repository root:
+
+    cd frontend
+    npm run dev
+
+Vite normally serves the application at:
+
+    http://localhost:5173
+
+Open the local address displayed in the terminal.
+
+### Verify ML Integration
+
+Running the frontend, backend functions, and ML service separately does not guarantee that they are integrated.
+
+Confirm that:
+
+- The frontend calls the intended endpoint.
+- The request contains the fields expected by that endpoint.
+- The backend forwards the request correctly.
+- The response schema matches what the frontend expects.
+- The model loads successfully and returns valid predictions.
+- SHAP explanations are returned and displayed correctly.
+
+## Testing
+
+Testing should cover the ML API, user workflows, access control, storage, and integrations.
+
+### 1. Test the ML Prediction Endpoint
+
+If the Flask service exposes `POST /predict`, the following request illustrates how to test it using `curl`.
+
+The field names and accepted values must match the current implementation.
+
+    curl -X POST http://127.0.0.1:8080/predict \
+      -H "Content-Type: application/json" \
+      -d '{
+        "pet": {
+          "species": "Cat",
+          "breed": "Persian",
+          "age": 2,
+          "size": "Small",
+          "energyLevel": "Moderate",
+          "healthStatus": "Healthy"
+        },
+        "adopter": {
+          "activityLevel": 4,
+          "careHoursNumeric": 3,
+          "housingTypeEncoded": 2,
+          "hasChildrenUnder12": false,
+          "hasOtherPets": true,
+          "experienceLevel": 2,
+          "groomingTolerance": 3,
+          "age": 35
+        }
+      }'
+
+A successful response should follow the schema defined by the Flask service. If the endpoint returns a compatibility score and SHAP factors, verify that the score is valid and that the explanation is present.
+
+An HTTP success response does not establish the model's predictive accuracy.
+
+### 2. Manual Functional Testing
+
+| Test | Action | Expected Result |
+|---|---|---|
+| Registration | Create a user account | Account is created or a clear validation error is displayed |
+| Login | Sign in with valid credentials | User is authenticated |
+| Role permissions | Attempt an action restricted to another role | Unauthorized action is denied |
+| Pet listings | Create or view a pet listing | Listing data is displayed and stored correctly |
+| Questionnaire | Submit adopter lifestyle information | Validated profile data is processed |
+| Recommendations | Request compatible pets | The configured scoring or prediction path returns results |
+| Explanations | View a recommendation explanation | Available contributing factors are displayed |
+| Applications | Submit an adoption application | Application is recorded |
+| Shelter review | Review an application with an authorized account | The permitted review action is completed |
+| Image validation | Upload an unsupported file type | Upload is rejected with a clear message |
+| Image storage | Upload an allowed pet image | Image is stored and retrievable by an authorized user |
+| Scheduling | Test interview scheduling | Scheduling works when required credentials and APIs are configured |
+
+### 3. Record Test Results
+
+Maintain a test record containing:
+
+- Test case ID and objective
+- Preconditions and test data
+- Steps performed
+- Expected result
+- Actual result
+- Pass/fail status
+- Evidence, such as screenshots, logs, or automated test output
+- Related GitHub Issue, where applicable
+
+Only report tests as passed after they have been executed.
+
+## Git Workflow and Project Management
+
+### Branching Strategy
+
+The following strategy can be used to organize development:
+
+| Branch | Purpose |
 |---|---|
-| `frontend/` | User interface, pages, components, and frontend configuration |
-| `backend/` | API endpoints, application logic, and integrations |
-| `ml/` | Data preprocessing, model training, prediction, and explainability |
-| `docs/` | Supporting documentation, diagrams, and project reports |
-| `README.md` | Project overview and setup instructions |
+| `main` | Stable, reviewed code |
+| `sprint-2-development` | Sprint II development and integration, if maintained |
+| `feat/<short-description>` | Feature development |
+| `fix/<short-description>` | Bug fixes |
+| `docs/<short-description>` | Documentation changes |
 
-These directory names are illustrative. Use the actual repository structure when locating files and running commands.
+Create branches for specific tasks, keep changes focused, and merge reviewed work into the intended target branch.
 
----
+Example:
 
-## Best Practices for Contributors
+    git switch main
+    git pull origin main
+    git switch -c feat/recommendation-explanations
 
-- Read the existing code before modifying functionality.
-- Keep frontend, backend, and machine learning responsibilities clearly separated.
-- Keep model preprocessing consistent between training and prediction.
-- Document new environment variables and setup steps.
-- Test changes before committing them.
-- Never commit API keys, OAuth secrets, Firebase service-account files, or other sensitive credentials.
-- Use meaningful commit messages and descriptive branch names.
-- Update this README whenever installation steps, features, or project structure change.
+After implementing and testing the change:
+
+    git add .
+    git commit -m "feat: add recommendation explanations"
+    git push -u origin feat/recommendation-explanations
+
+When pull requests are used, include a description of the change, the related issue, the tests performed, and any known limitations.
+
+### Meaningful Commits
+
+Use clear commit messages that describe the work actually completed. Conventional Commit prefixes help organize the history.
+
+| Prefix | Purpose |
+|---|---|
+| `feat:` | Introduce a feature |
+| `fix:` | Correct a defect |
+| `docs:` | Update documentation |
+| `test:` | Add or improve tests |
+| `refactor:` | Restructure code without intentionally changing behavior |
+| `chore:` | Maintain dependencies or development configuration |
+
+Examples:
+
+    feat: add SHAP compatibility explanations
+    fix: validate unsupported pet image uploads
+    test: cover compatibility prediction endpoint
+    docs: document Firebase emulator setup
+    chore: update Python dependencies
+
+Use commit messages that accurately reflect the associated changes.
+
+### Issues and Task Tracking
+
+Use GitHub Issues or another traceable task record to document features, bugs, testing tasks, and improvements.
+
+Each task should include:
+
+- A clear title and description
+- Acceptance criteria or reproduction steps
+- Appropriate labels
+- A milestone or project-board status, if used
+- Links to relevant commits and pull requests
+
+Reference actual issue numbers in commits and pull requests when available.
+
+### Releases and Version Tags
+
+Use Git tags to identify stable milestones after implementation and testing.
+
+Example:
+
+    git tag -a v1.0.0 -m "Adoptly v1.0.0"
+    git push origin v1.0.0
+
+Create release tags only for milestones that have actually been completed. Document ongoing work as development rather than presenting it as a completed release.
+
+## Troubleshooting
+
+### Vite Is Not Recognized
+
+From the `frontend/` directory, run:
+
+    npm install
+    npm run dev
+
+Check that Vite is declared in the project's dependencies or development dependencies.
+
+### Flask Cannot Load the Model
+
+Confirm that the model artifacts, feature definitions, preprocessing files, and required data files exist in the configured locations. Activate the correct virtual environment and install the dependencies from `requirements.txt`.
+
+### Firebase Requests Fail
+
+Check the Firebase configuration, selected project, emulator status, security rules, and frontend emulator settings.
+
+### CORS Errors Occur
+
+Verify the Flask or Cloud Functions CORS configuration and confirm that the frontend is calling the correct endpoint. Avoid allowing all origins in production without an appropriate security assessment.
+
+### Recommendations Do Not Appear
+
+Check the selected ML mode, endpoint URL, request schema, response schema, and browser/network logs. If mock scoring is enabled, the displayed results may not come from the trained model.
+
+### Google Calendar or Meet Integration Fails
+
+Confirm that the API is enabled, credentials are configured securely, the executing identity has the necessary permissions, and the implementation uses the appropriate authentication method.
 
 ## Limitations
 
-- Compatibility predictions depend on the quality and representativeness of the training data.
-- Synthetic adopter attributes or rubric-generated compatibility scores must be distinguished from real-world adoption outcomes.
-- SHAP explanations describe model behavior; they do not establish that a recommendation is objectively correct.
-- A high compatibility score cannot guarantee a successful long-term adoption.
-- Shelter verification and human review remain important parts of responsible adoption decisions.
+- Compatibility scores depend on the training data, feature preparation, and scoring methodology.
+- Synthetic adopter profiles or rubric-generated labels, if used, do not independently demonstrate real-world adoption success.
+- SHAP explains how model features contribute to a prediction; it does not prove that a recommendation is correct.
+- Cloud integrations require appropriate configuration, credentials, and permissions.
+- The system supports shelter decision-making rather than replacing responsible assessment.
 
----
+## License and Access Statement
 
-## License
+Adoptly was developed as an academic project for the Bachelor of Science in Informatics and Computer Science programme at Strathmore University, Nairobi, Kenya.
 
-No license has been specified in this README. Add a license file and update this section once the project's licensing terms have been decided.
+**License:** The intended license is the MIT License. To apply it, include a root-level `LICENSE` file containing the MIT License text and the appropriate copyright holder and year. The MIT License does not restrict use to educational or non-commercial purposes.
 
-## Contributors and Contact
-
-**Project:** Adoptly — Explainable Pet-Adopter Compatibility Matching
-
-**Repository:** [github.com/ritararin/adoptly](https://github.com/ritararin/adoptly)
-
-For questions, bug reports, or proposed improvements, use the repository's GitHub Issues or contact the project maintainers.
-
----
-
-## Acknowledgements
-
-- [React](https://react.dev/)
-- [Vite](https://vite.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Firebase](https://firebase.google.com/docs)
-- [Scikit-learn](https://scikit-learn.org/)
-- [SHAP](https://shap.readthedocs.io/)
-- [Google Meet API](https://developers.google.com/meet/api/guides/overview)
-````
+**Access and security:** Repository access depends on its GitHub visibility and access permissions. API keys, service-account files, private credentials, and production secrets must not be committed. Anyone running the application locally must provide the required credentials and configuration for the services they intend to use.
