@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { PawPrint, Mail, Lock, ArrowRight } from 'lucide-react'
+import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function Login() {
   const { login } = useAuth(); const nav = useNavigate()
@@ -21,6 +22,16 @@ export default function Login() {
           <span className="mt-4 font-serif text-2xl font-semibold tracking-[-0.03em] text-forest">adoptly</span>
           <h1 className="mt-3 h-serif text-xl">Welcome back</h1>
           <p className="mt-1 text-xs text-ink-muted">Log in to continue finding your perfect match.</p>
+        </div>
+
+        {/* ---- Google Sign-In ---- */}
+        <GoogleSignInButton onSuccess={() => nav('/')} />
+
+        {/* ---- Divider ---- */}
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-line"></div>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-ink-whisper">or</span>
+          <div className="h-px flex-1 bg-line"></div>
         </div>
 
         <div className="space-y-4">

@@ -1,70 +1,32 @@
-# Getting Started with Create React App
+ADOPTLY FRONTEND (React + Vite + Tailwind + Firebase)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+SETUP
+1. npm install
+2. Copy .env.example to .env and fill in your Firebase web-app config.
+3. In the Firebase console enable Authentication (Email/Password) and Firestore.
+4. Paste firestore.rules into Firestore rules (tighten before deployment).
+5. npm run dev
 
-## Available Scripts
+ROLES (FR-01)
+Role is set at registration from the email domain: domains in VITE_SHELTER_DOMAINS become Shelter Staff,
+emails in VITE_ADMIN_EMAILS become Admin, everyone else is an Adopter. Note: client-side role assignment is
+for the prototype; for production assign roles in a Cloud Function / custom claims.
 
-In the project directory, you can run:
+TRY IT
+Register a shelter account (use a domain from VITE_SHELTER_DOMAINS) -> add a few pets.
+Register an adopter -> complete the profile -> see ranked matches, breakdown, apply.
+Log in as shelter -> Review Tasks -> schedule interview / reject / confirm adoption.
 
-### `npm start`
+CONNECTING THE ML SERVICE
+VITE_USE_MOCK_ML=true scores in the browser with src/lib/scorer.js (rubric-based, same shape as real output).
+To switch to your Random Forest + TreeSHAP service: set VITE_USE_MOCK_ML=false and VITE_ML_ENDPOINT to your
+Cloud Function. It receives { adopterId, profile, petIds } and must return an array of
+{ petId, score (0-1), contributions: [{ feature, label, impact, detail }], summary }.
+PetDetail.jsx currently scores a single pet with scorer.js; swap that call for your endpoint too (marked TODO).
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+STRUCTURE
+src/lib        firebase init, Firestore API layer, mock scorer, option lists
+src/context    AuthContext (register/login/role)
+src/components Layout, ScoreGauge, MatchBreakdown (SHAP bars), PetCard, Choice, StatusBadge
+src/pages      Login, Register, Questionnaire, Matches, PetDetail, MyApplications,
+               ShelterListings, ShelterApplications, ApplicationReview, Admin
