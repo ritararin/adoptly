@@ -33,6 +33,7 @@ token.json/
 
 # Python
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -43,6 +44,7 @@ ml-service/data/*.csv
 ml-service/data/*.xlsx
 ml-service/data/processed/
 ml-service/model/*.pkl
+ml-service/model/*.joblib*
 ml-service/notebooks/.ipynb_checkpoints/
 
 # Node
@@ -53,6 +55,7 @@ functions/lib/
 # Firebase
 .firebase/
 firebase-debug.log
+firestore-debug.log
 
 # Environment
 .env

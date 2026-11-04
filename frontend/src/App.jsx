@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { wakeUpRecommendationService } from './recommendationApi'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -25,6 +27,10 @@ function Home() {
 const guard = (roles, el) => <ProtectedRoute roles={roles}>{el}</ProtectedRoute>
 
 export default function App() {
+  useEffect(() => {
+    wakeUpRecommendationService()
+  }, [])
+
   return (
     <Routes>
       <Route path="/" element={<Home />} />

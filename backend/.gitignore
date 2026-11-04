@@ -1,0 +1,21 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local envs & logs
+.env
+.env.*
+*.log
+
+# Explicitly ensure model & breed traits are tracked
+!model/adoptly_compatibility_model.joblib
+!data/adoptly_breed_traits.json
+

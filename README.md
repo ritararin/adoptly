@@ -401,11 +401,20 @@ The following strategy can be used to organize development:
 
 | Branch | Purpose |
 |---|---|
-| `main` | Stable, reviewed code |
-| `sprint-2-development` | Sprint II development and integration, if maintained |
-| `feat/<short-description>` | Feature development |
-| `fix/<short-description>` | Bug fixes |
-| `docs/<short-description>` | Documentation changes |
+| main | Stable, production release and automated continuous deployment |
+| sprint-2-development | Sprint development and integration branch |
+| eat/<short-description> | Feature development |
+| ix/<short-description> | Bug fixes |
+| docs/<short-description> | Documentation changes |
+
+### Sprint III Documentation & Deployment Suite
+- **[Continuous Deployment (CI/CD) & Live Hosting Guide](docs/DEPLOYMENT_AND_CICD_GUIDE.md):** Step-by-step automated deployment setup for Render (Backend) and Vercel (Frontend) on git push.
+- **[Chapter 5: Implementation, Testing and Evaluation](docs/CHAPTER_5_IMPLEMENTATION_AND_EVALUATION.md):** Architecture, 24-test pytest suite, empirical model evaluation, and defect log.
+- **[Chapter 6: Conclusions, Contributions and Recommendations](docs/CHAPTER_6_CONCLUSIONS_AND_RECOMMENDATIONS.md):** Fulfillment of objectives, academic contribution, shelter recommendations, and future work.
+- **[Requirements & Objectives Traceability Matrix](docs/TRACEABILITY_MATRIX.md):** Traceability connecting OBJ-01..05, FR-01..08, and NFR-01..06 to code, tests, and evidence.
+- **[Model Evaluation & Verification Report](docs/MODEL_EVALUATION_REPORT.md):** R^2 = 0.9497, MAE = 1.30, 100% child safety compliance, latency benchmarks.
+- **[Handover & System Operation Manual](docs/HANDOVER_AND_OPERATION_MANUAL.md):** Step-by-step installation, Docker commands, environment configuration, and demo accounts.
+- **[Final Demonstration & Viva Script](docs/FINAL_DEMONSTRATION_SCRIPT.md):** Presentation script, persona walkthrough, and defense Q&A guide.
 
 Create branches for specific tasks, keep changes focused, and merge reviewed work into the intended target branch.
 

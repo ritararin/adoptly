@@ -1,44 +1,228 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { listApplications } from '../lib/api'
+import { listApplications, listPets } from '../lib/api'
 import StatusBadge from '../components/StatusBadge'
-import { ArrowRight, Inbox } from 'lucide-react'
+import PetHoverPreview from '../components/PetHoverPreview'
+import {
+  ArrowRight,
+  Inbox,
+  Search,
+  Filter,
+  Sparkles,
+  Loader2,
+  Calendar,
+  User,
+  Heart,
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function ShelterApplications() {
-  const { user } = useAuth(); const [apps, setApps] = useState([])
-  useEffect(() => { listApplications({ shelterId: user.uid }).then(setApps) }, [user.uid])
+  const { user } = useAuth()
+  const [apps, setApps] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all') // 'all' | 'Pending Review' | 'Interview Scheduled' | 'Adoption Completed'
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (!user?.uid) return
+    Promise.all([
+      listApplications({ shelterId: user.uid }),
+      listPets({ shelterId: user.uid })
+    ])
+      .then(([appsData, petsData]) => {
+        const petsMap = Object.fromEntries(petsData.map(p => [p.id, p]))
+        const enriched = appsData.map(a => ({
+          ...a,
+          pet: a.pet || petsMap[a.petId] || { name: a.petName, id: a.petId }
+        }))
+        setApps(enriched)
+      })
+      .finally(() => setLoading(false))
+  }, [user?.uid])
+
+  const filteredApps = apps.filter(a => {
+    const matchesFilter = filter === 'all' || a.status === filter
+    const matchesSearch =
+      (a.adopterName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (a.petName || '').toLowerCase().includes(search.toLowerCase())
+    return matchesFilter && matchesSearch
+  })
+
+  const pendingCount = apps.filter(a => a.status === 'Pending Review').length
+
+  if (loading) {
+    return (
+      <div className="flex h-72 flex-col items-center justify-center gap-3 text-forest">
+        <Loader2 className="animate-spin text-forest" size={36} />
+        <p className="text-xs font-semibold tracking-wider uppercase text-ink-muted">
+          Loading application queue…
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-7">
-        <p className="eyebrow">Review queue</p>
-        <h1 className="mt-2 h-serif text-3xl">Adoption applications</h1>
-        <p className="mt-2 text-sm text-ink-muted">Review applicants and their predicted compatibility.</p>
+    <div className="mx-auto max-w-5xl space-y-6">
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 border-b border-line pb-6 sm:flex-row sm:items-end">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-forest/15 bg-forest-wash/80 px-3 py-1 text-xs font-bold text-forest shadow-2xs backdrop-blur-xs">
+            <Sparkles size={13} className="text-forest animate-pulse" />
+            <span>Adoption Applications</span>
+          </div>
+          <h1 className="mt-3 font-serif text-3xl font-bold tracking-tight text-ink-head sm:text-4xl">
+            Review Queue
+          </h1>
+          <p className="mt-2 text-sm text-ink-muted max-w-xl">
+            Review applicant lifestyle submissions, evaluate ML compatibility scores, and schedule virtual verification interviews.
+          </p>
+        </div>
+
+        {pendingCount > 0 && (
+          <div className="self-start sm:self-auto rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800">
+            {pendingCount} application{pendingCount === 1 ? '' : 's'} awaiting review
+          </div>
+        )}
       </div>
 
-      {apps.length === 0 ? (
-        <div className="rounded-[20px] border border-dashed border-line bg-white p-10 text-center">
-          <Inbox className="mx-auto text-ink-whisper" size={22} />
-          <p className="mt-3 text-sm text-ink-muted">No applications yet.</p>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { id: 'all', label: 'All Applications', count: apps.length },
+            { id: 'Pending Review', label: 'Pending Review', count: pendingCount },
+            {
+              id: 'Interview Scheduled',
+              label: 'Interviews',
+              count: apps.filter(a => a.status === 'Interview Scheduled').length,
+            },
+            {
+              id: 'Adoption Completed',
+              label: 'Completed',
+              count: apps.filter(a => a.status === 'Adoption Completed').length,
+            },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                filter === tab.id
+                  ? 'bg-forest text-cream shadow-sm'
+                  : 'border border-line bg-white text-ink-muted hover:border-forest/30 hover:text-forest'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.count > 0 && (
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                    filter === tab.id ? 'bg-cream/20 text-cream' : 'bg-cream-dim text-ink-muted'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full sm:w-64">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+          <input
+            type="text"
+            placeholder="Search by pet or applicant…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-line bg-white pl-8 pr-3 py-1.5 text-xs outline-none focus:border-forest focus:ring-2 focus:ring-forest/15"
+          />
+        </div>
+      </div>
+
+      {/* Applications List */}
+      {filteredApps.length === 0 ? (
+        <div className="rounded-[24px] border border-dashed border-line bg-white p-12 text-center shadow-soft">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-cream-dim text-ink-whisper mb-3">
+            <Inbox size={28} />
+          </div>
+          <h3 className="font-serif text-lg font-bold text-ink-head">No applications found</h3>
+          <p className="mt-1 text-xs text-ink-muted">
+            {search ? 'Try adjusting your search criteria.' : 'No applications match this filter.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {apps.map(a => (
-            <Link key={a.id} to={`/shelter/applications/${a.id}`}
-              className="group flex items-center justify-between rounded-[18px] border border-line bg-white p-5 shadow-soft transition hover:border-forest/40 hover:shadow-lift">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="truncate text-sm font-semibold text-ink-head">{a.adopterName} → {a.petName}</h3>
-                  <StatusBadge status={a.status} />
-                </div>
-                <p className="mt-1 text-xs text-ink-faint">
-                  Compatibility {a.score != null ? Math.round(a.score * 100) + '%' : '—'}
-                </p>
-              </div>
-              <ArrowRight size={16} className="shrink-0 text-ink-whisper transition group-hover:translate-x-0.5 group-hover:text-forest" />
-            </Link>
-          ))}
+          <AnimatePresence>
+            {filteredApps.map((a, index) => {
+              const scorePct = a.score != null ? Math.round(a.score * 100) : null
+
+              return (
+                <motion.div
+                  key={a.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ delay: index * 0.04 }}
+                >
+                  <Link
+                    to={`/shelter/applications/${a.id}`}
+                    className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[22px] border border-line/80 bg-white p-5 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-forest/30 hover:shadow-lift"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-forest-wash text-forest font-serif font-bold text-base shadow-2xs">
+                        {(a.petName || 'P').charAt(0)}
+                      </div>
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-serif text-lg font-bold text-ink-head group-hover:text-forest transition-colors">
+                            {a.adopterName || 'Applicant'}
+                          </h3>
+                          <span className="text-xs text-ink-whisper">for</span>
+                          <PetHoverPreview pet={a.pet}>
+                            <span className="font-semibold text-sm text-forest underline decoration-dotted decoration-forest/40 underline-offset-4 cursor-pointer hover:text-forest-dark">
+                              “{a.petName}”
+                            </span>
+                          </PetHoverPreview>
+                          <StatusBadge status={a.status} size="xs" />
+                        </div>
+
+                        <p className="text-xs text-ink-muted">
+                          {a.adopterProfile?.housingType || 'Housing specified'} · {a.adopterProfile?.experience || 'Experience listed'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 border-t border-line-soft pt-3 sm:border-0 sm:pt-0">
+                      {scorePct != null && (
+                        <div className="text-right">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-ink-whisper">
+                            Compatibility
+                          </span>
+                          <span
+                            className={`font-serif text-lg font-bold ${
+                              scorePct >= 75
+                                ? 'text-forest'
+                                : scorePct >= 50
+                                ? 'text-amber-700'
+                                : 'text-rose-600'
+                            }`}
+                          >
+                            {scorePct}%
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-cream-dim text-ink-muted transition-colors group-hover:bg-forest group-hover:text-cream">
+                        <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
         </div>
       )}
     </div>

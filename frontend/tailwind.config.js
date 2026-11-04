@@ -15,6 +15,8 @@ export default {
         serif: ['Fraunces', 'ui-serif', 'Georgia', 'serif']
       },
       boxShadow: {
+        '2xs': '0 1px 2px rgba(0, 0, 0, 0.04)',
+        'xs': '0 1px 3px rgba(0, 0, 0, 0.06)',
         soft: '0 8px 30px rgba(36,55,43,0.04)',
         lift: '0 14px 44px rgba(36,55,43,0.08)'
       }

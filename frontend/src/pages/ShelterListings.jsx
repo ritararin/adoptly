@@ -3,12 +3,13 @@ import { useAuth } from '../context/AuthContext'
 import { listPets, createPet, updatePet, deletePet, uploadPetPhoto } from '../lib/api'
 import { SPECIES, SIZES, TEMPERAMENTS, ENERGY } from '../lib/options'
 import StatusBadge from '../components/StatusBadge'
+import PetHoverPreview from '../components/PetHoverPreview'
 import { Plus, X, Pencil, Trash2, ImagePlus, Loader2, PawPrint, CheckCircle2, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const BLANK = {
   name: '', species: 'Dog', breed: '', age: 1, size: 'Medium',
-  temperament: 'Friendly', energyLevel: 'Moderate', careRequirements: '',
+  temperament: 'Friendly', energyLevel: 3, childFriendly: 4, careRequirements: '',
   healthStatus: 'Healthy', photoUrl: '', adoptionStatus: 'Available'
 }
 
@@ -77,7 +78,8 @@ export default function ShelterListings() {
         breed: form.breed || '',
         size: form.size || 'Medium',
         temperament: form.temperament || 'Friendly',
-        energyLevel: form.energyLevel || 'Moderate',
+        energyLevel: Number(form.energyLevel) || 3,
+        childFriendly: Number(form.childFriendly) || 3,
         healthStatus: form.healthStatus || 'Healthy',
         adoptionStatus: form.adoptionStatus || 'Available',
         careRequirements: form.careRequirements || ''
@@ -118,25 +120,25 @@ export default function ShelterListings() {
 
       {/* --- KPI STATS ROW --- */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-[20px] border border-line bg-white p-5 shadow-soft flex items-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-forest-wash text-forest"><PawPrint size={24} /></div>
+        <div className="rounded-[22px] border border-line bg-white p-5 shadow-soft flex items-center gap-4 transition-all hover:shadow-lift">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-forest-wash text-forest shadow-2xs"><PawPrint size={24} /></div>
           <div>
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-wider">Total Pets</p>
-            <p className="text-2xl font-serif font-bold text-forest mt-0.5">{totalPets}</p>
+            <p className="text-[11px] font-bold text-ink-muted uppercase tracking-[0.14em]">Total Inventory</p>
+            <p className="text-2xl font-serif font-bold text-ink-head mt-0.5">{totalPets}</p>
           </div>
         </div>
-        <div className="rounded-[20px] border border-line bg-white p-5 shadow-soft flex items-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-gold-soft text-gold-ink"><Clock size={24} /></div>
+        <div className="rounded-[22px] border border-line bg-white p-5 shadow-soft flex items-center gap-4 transition-all hover:shadow-lift">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 shadow-2xs"><CheckCircle2 size={24} /></div>
           <div>
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-wider">Available</p>
-            <p className="text-2xl font-serif font-bold text-gold-ink mt-0.5">{availablePets}</p>
+            <p className="text-[11px] font-bold text-ink-muted uppercase tracking-[0.14em]">Available for Adoption</p>
+            <p className="text-2xl font-serif font-bold text-emerald-800 mt-0.5">{availablePets}</p>
           </div>
         </div>
-        <div className="rounded-[20px] border border-line bg-white p-5 shadow-soft flex items-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-terracotta-soft text-terracotta-deep"><CheckCircle2 size={24} /></div>
+        <div className="rounded-[22px] border border-line bg-white p-5 shadow-soft flex items-center gap-4 transition-all hover:shadow-lift">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-forest text-gold shadow-2xs"><CheckCircle2 size={24} /></div>
           <div>
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-wider">Adopted</p>
-            <p className="text-2xl font-serif font-bold text-terracotta-deep mt-0.5">{adoptedPets}</p>
+            <p className="text-[11px] font-bold text-ink-muted uppercase tracking-[0.14em]">Placed in Homes</p>
+            <p className="text-2xl font-serif font-bold text-forest mt-0.5">{adoptedPets}</p>
           </div>
         </div>
       </div>
@@ -188,16 +190,52 @@ export default function ShelterListings() {
           <div><label className="label">Age (years)</label><input className="input" type="number" min="0" step="0.5" {...f('age')} /></div>
           <div><label className="label">Size</label><Select k="size" opts={SIZES} /></div>
           <div><label className="label">Temperament</label><Select k="temperament" opts={TEMPERAMENTS} /></div>
-          <div><label className="label">Energy level</label><Select k="energyLevel" opts={ENERGY} /></div>
+          <div>
+            <label className="label">Energy level (1 to 5)</label>
+            <select className="input" value={form.energyLevel || 3} onChange={e => setForm({ ...form, energyLevel: Number(e.target.value) })}>
+              <option value={1}>1 - Low energy</option>
+              <option value={2}>2 - Gentle / Quiet</option>
+              <option value={3}>3 - Moderate</option>
+              <option value={4}>4 - High energy</option>
+              <option value={5}>5 - Very high energy</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Child-friendliness (1 to 5)</label>
+            <select className="input" value={form.childFriendly || 4} onChange={e => setForm({ ...form, childFriendly: Number(e.target.value) })}>
+              <option value={1}>1 - Not suited for children</option>
+              <option value={2}>2 - Cautious / Older kids only</option>
+              <option value={3}>3 - Moderate / Supervised</option>
+              <option value={4}>4 - Good with children</option>
+              <option value={5}>5 - Exceptionally gentle with kids</option>
+            </select>
+          </div>
           <div><label className="label">Health status</label><input className="input" {...f('healthStatus')} /></div>
           <div><label className="label">Status</label><Select k="adoptionStatus" opts={['Available', 'Pending', 'Adopted']} /></div>
-          <div className="sm:col-span-2"><label className="label">Care requirements</label><input className="input" {...f('careRequirements')} /></div>
+          <div className="sm:col-span-3">
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="label mb-0">Care Requirements &amp; Shelter Notes</label>
+              <span className="text-[11px] font-medium text-ink-whisper">
+                {(form.careRequirements || '').length} characters
+              </span>
+            </div>
+            <textarea
+              className="input min-h-[110px] resize-y text-xs leading-relaxed"
+              rows={4}
+              placeholder="Describe any medical needs, daily routines, exercise habits, yard preferences, or special behavioral notes (e.g. Crate trained, loves daily 45-min walks, needs a fenced yard, thrives as the only pet)..."
+              value={form.careRequirements || ''}
+              onChange={e => setForm({ ...form, careRequirements: e.target.value })}
+            />
+            <p className="mt-1.5 text-[11px] text-ink-muted">
+              These notes are featured in compatibility evaluations and shown to interested adopters to ensure a seamless match.
+            </p>
+          </div>
 
-          {err && <p className="sm:col-span-3 rounded-lg bg-terracotta/10 px-3 py-2 text-xs font-medium text-terracotta-deep">{err}</p>}
+          {err && <p className="sm:col-span-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-800">{err}</p>}
 
           <div className="sm:col-span-3 flex gap-2 border-t border-line-soft pt-4">
             <button className="btn-primary" disabled={busy}>
-              {busy ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : 'Save'}
+              {busy ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : 'Save Listing'}
             </button>
             <button type="button" className="btn-outline" onClick={closeForm}>Cancel</button>
           </div>
@@ -205,34 +243,57 @@ export default function ShelterListings() {
       )}
 
       {/* --- TABLE --- */}
-      <div className="overflow-hidden rounded-[20px] border border-line bg-white shadow-soft">
+      <div className="overflow-hidden rounded-[24px] border border-line/80 bg-white shadow-soft">
         <table className="w-full text-left text-sm">
-          <thead className="bg-cream-soft text-[10px] uppercase tracking-[0.12em] text-ink-faint">
+          <thead className="bg-cream-soft text-[10px] uppercase tracking-[0.14em] text-ink-muted border-b border-line-soft">
             <tr>{['Pet', 'Species', 'Breed', 'Age', 'Status', ''].map(h => <th key={h} className="px-5 py-4 font-bold">{h}</th>)}</tr>
           </thead>
           <tbody>
             {pets.map(p => (
-              <tr key={p.id} className="group border-t border-line-soft transition-colors hover:bg-forest-wash/40">
+              <tr key={p.id} className="group border-t border-line-soft transition-colors hover:bg-forest-wash/30">
                 <td className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-forest-wash text-lg shadow-sm">
-                      {p.photoUrl ? <img src={p.photoUrl} alt={p.name} className="h-full w-full object-cover" /> : (p.species === 'Cat' ? '🐱' : '🐶')}
+                  <PetHoverPreview pet={p}>
+                    <div className="flex items-center gap-3 cursor-pointer">
+                      <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-forest-wash text-lg shadow-2xs">
+                        {p.photoUrl ? <img src={p.photoUrl} alt={p.name} className="h-full w-full object-cover" /> : (p.species === 'Cat' ? '🐱' : '🐶')}
+                      </div>
+                      <span className="font-semibold text-ink-head group-hover:text-forest transition-colors underline decoration-dotted decoration-forest/30 underline-offset-4">{p.name}</span>
                     </div>
-                    <span className="font-semibold text-ink-head group-hover:text-forest transition-colors">{p.name}</span>
-                  </div>
+                  </PetHoverPreview>
                 </td>
-                <td className="px-5 py-4 text-ink-muted">{p.species}</td>
-                <td className="px-5 py-4 text-ink-muted">{p.breed}</td>
-                <td className="px-5 py-4 text-ink-muted">{p.age} yr{p.age === 1 ? '' : 's'}</td>
-                <td className="px-5 py-4"><StatusBadge status={p.adoptionStatus} /></td>
+                <td className="px-5 py-4 text-ink-muted text-xs font-medium">{p.species}</td>
+                <td className="px-5 py-4 text-ink-muted text-xs font-medium">{p.breed}</td>
+                <td className="px-5 py-4 text-ink-muted text-xs font-medium">{p.age} yr{p.age === 1 ? '' : 's'}</td>
+                <td className="px-5 py-4"><StatusBadge status={p.adoptionStatus} size="xs" /></td>
                 <td className="px-5 py-4 text-right">
-                  <div className="flex items-center justify-end gap-3 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button className="inline-flex items-center gap-1 text-xs font-bold text-forest hover:text-forest-dark" onClick={() => openEdit(p)}>
-                      <Pencil size={12} /> Edit
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-forest/20 bg-forest-wash/80 px-2.5 py-1.5 text-xs font-bold text-forest hover:bg-forest hover:text-white transition-all shadow-2xs cursor-pointer active:scale-95"
+                      onClick={() => {
+                        openEdit(p)
+                        window.scrollTo({ top: 120, behavior: 'smooth' })
+                      }}
+                      title={`Edit ${p.name}`}
+                    >
+                      <Pencil size={12} /> <span>Edit</span>
                     </button>
-                    <button className="inline-flex items-center gap-1 text-xs font-bold text-terracotta hover:text-terracotta-deep"
-                      onClick={async () => { if (confirm(`Delete ${p.name}?`)) { await deletePet(p.id); load() } }}>
-                      <Trash2 size={12} /> Delete
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white transition-all shadow-2xs cursor-pointer active:scale-95"
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to delete ${p.name}? This action cannot be undone.`)) {
+                          try {
+                            await deletePet(p.id)
+                            await load()
+                          } catch (delErr) {
+                            alert(`Could not delete ${p.name}: ${delErr.message}`)
+                          }
+                        }
+                      }}
+                      title={`Delete ${p.name}`}
+                    >
+                      <Trash2 size={12} /> <span>Delete</span>
                     </button>
                   </div>
                 </td>
