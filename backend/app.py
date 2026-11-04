@@ -102,11 +102,7 @@ if ALLOWED_ORIGINS == "*":
 else:
     CORS(app, resources={r"/*": {"origins": ALLOWED_ORIGINS}}, supports_credentials=True)
 
-import threading
-try:
-    threading.Thread(target=load_artifacts, daemon=True).start()
-except Exception as _bg_err:
-    log.warning("Could not start background artifact loading: %s", _bg_err)
+
 
 # Application state
 state: dict = {
@@ -137,38 +133,61 @@ def get_google_request():
     return state["session"]
 
 
+def resolve_file_path(configured_path: Path, subpath: str) -> Path:
+    candidates = [
+        configured_path,
+        BASE_DIR / subpath,
+        Path("backend") / subpath,
+        Path(subpath),
+        Path(__file__).resolve().parent / subpath,
+    ]
+    for c in candidates:
+        if c.exists():
+            return c.resolve()
+    return configured_path
+
+
 def load_artifacts():
     """Load model artifact and breed traits."""
     if state["model"] is not None:
         return
 
+    resolved_model = resolve_file_path(MODEL_PATH, "model/adoptly_compatibility_model.joblib")
     try:
-        if MODEL_PATH.exists():
+        if resolved_model.exists():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                artifact = joblib.load(MODEL_PATH)
+                artifact = joblib.load(resolved_model)
 
             state["artifact"] = artifact
             state["model"] = artifact["model"]
             state["feature_cols"] = list(artifact.get("feature_cols", []))
             state["train_medians"] = dict(artifact.get("train_medians", {}))
-            log.info("Model loaded successfully (%d features).", len(state["feature_cols"]))
+            log.info("Model loaded successfully from %s (%d features).", resolved_model, len(state["feature_cols"]))
         else:
-            log.warning("Model file not found at %s", MODEL_PATH)
+            log.warning("Model file not found at %s", resolved_model)
     except Exception as e:
-        log.error("Error loading model: %s", e)
+        log.error("Error loading model from %s: %s", resolved_model, e)
 
+    resolved_breed = resolve_file_path(BREED_TRAITS_PATH, "data/adoptly_breed_traits.json")
     try:
-        if BREED_TRAITS_PATH.exists():
-            with open(BREED_TRAITS_PATH, "r", encoding="utf-8") as f:
+        if resolved_breed.exists():
+            with open(resolved_breed, "r", encoding="utf-8") as f:
                 data = json.load(f)
             state["breed_traits"] = data.get("breeds", {})
             state["species_medians"] = data.get("species_medians", {})
-            log.info("Loaded traits for %d breeds from %s", len(state["breed_traits"]), BREED_TRAITS_PATH)
+            log.info("Loaded traits for %d breeds from %s", len(state["breed_traits"]), resolved_breed)
         else:
-            log.warning("Breed traits file not found at %s", BREED_TRAITS_PATH)
+            log.warning("Breed traits file not found at %s", resolved_breed)
     except Exception as e:
-        log.warning("Failed to load breed traits: %s", e)
+        log.warning("Failed to load breed traits from %s: %s", resolved_breed, e)
+
+
+import threading
+try:
+    threading.Thread(target=load_artifacts, daemon=True).start()
+except Exception as _bg_err:
+    log.warning("Could not start background artifact loading: %s", _bg_err)
 
 
 def get_explainer():
@@ -370,6 +389,8 @@ def compute_explanation(row_df: pd.DataFrame) -> list[dict]:
 
 @app.route("/", methods=["GET"])
 def index():
+    if state["model"] is None:
+        load_artifacts()
     return jsonify({
         "status": "online",
         "service": "Adoptly Compatibility Matching & Scheduling API",
