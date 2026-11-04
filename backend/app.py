@@ -169,6 +169,8 @@ def load_artifacts() -> bool:
         try:
             # 1. Load breed traits first (ultra-fast <0.05s)
             resolved_breed = resolve_file_path(BREED_TRAITS_PATH, "data/adoptly_breed_traits.json")
+            state["resolved_breed_path"] = str(resolved_breed)
+            state["breed_exists"] = resolved_breed.exists()
             if resolved_breed.exists():
                 with open(resolved_breed, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -180,7 +182,10 @@ def load_artifacts() -> bool:
 
             # 2. Load model artifact
             resolved_model = resolve_file_path(MODEL_PATH, "model/adoptly_compatibility_model.joblib")
+            state["resolved_model_path"] = str(resolved_model)
+            state["model_exists"] = resolved_model.exists()
             if resolved_model.exists():
+                state["model_size"] = resolved_model.stat().st_size
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     artifact = joblib.load(resolved_model)
@@ -189,10 +194,16 @@ def load_artifacts() -> bool:
                 state["model"] = artifact["model"]
                 state["feature_cols"] = list(artifact.get("feature_cols", []))
                 state["train_medians"] = dict(artifact.get("train_medians", {}))
+                state["load_status"] = "success"
                 log.info("Model loaded successfully from %s (%d features).", resolved_model, len(state["feature_cols"]))
             else:
+                state["load_status"] = "model_file_not_found"
                 log.warning("Model file not found at %s", resolved_model)
         except Exception as e:
+            state["load_status"] = "exception"
+            state["load_error"] = f"{type(e).__name__}: {str(e)}"
+            import traceback
+            state["load_traceback"] = traceback.format_exc()
             log.error("Error loading model: %s", e)
         finally:
             _loading_in_progress = False
@@ -434,6 +445,15 @@ def health():
         "service": "adoptly-api",
         "model_loaded": state["model"] is not None,
         "loading": _loading_in_progress,
+        "load_status": state.get("load_status"),
+        "load_error": state.get("load_error"),
+        "model_path": state.get("resolved_model_path"),
+        "model_exists": state.get("model_exists"),
+        "model_size": state.get("model_size"),
+        "breed_path": state.get("resolved_breed_path"),
+        "breed_exists": state.get("breed_exists"),
+        "breeds_count": len(state.get("breed_traits", {})),
+        "cwd": os.getcwd(),
         "scikit_learn": sklearn.__version__,
     }), 200
 
