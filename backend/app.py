@@ -133,6 +133,13 @@ def get_google_request():
     return state["session"]
 
 
+import time
+import threading
+
+_load_lock = threading.Lock()
+_loading_in_progress = False
+
+
 def resolve_file_path(configured_path: Path, subpath: str) -> Path:
     candidates = [
         configured_path,
@@ -140,6 +147,8 @@ def resolve_file_path(configured_path: Path, subpath: str) -> Path:
         Path("backend") / subpath,
         Path(subpath),
         Path(__file__).resolve().parent / subpath,
+        Path(__file__).resolve().parent.parent / subpath,
+        Path(__file__).resolve().parent.parent / "backend" / subpath,
     ]
     for c in candidates:
         if c.exists():
@@ -147,45 +156,58 @@ def resolve_file_path(configured_path: Path, subpath: str) -> Path:
     return configured_path
 
 
-def load_artifacts():
-    """Load model artifact and breed traits."""
+def load_artifacts() -> bool:
+    """Load model artifact and breed traits safely."""
+    global _loading_in_progress
     if state["model"] is not None:
-        return
+        return True
 
-    resolved_model = resolve_file_path(MODEL_PATH, "model/adoptly_compatibility_model.joblib")
-    try:
-        if resolved_model.exists():
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                artifact = joblib.load(resolved_model)
+    with _load_lock:
+        if state["model"] is not None:
+            return True
+        _loading_in_progress = True
+        try:
+            # 1. Load breed traits first (ultra-fast <0.05s)
+            resolved_breed = resolve_file_path(BREED_TRAITS_PATH, "data/adoptly_breed_traits.json")
+            if resolved_breed.exists():
+                with open(resolved_breed, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                state["breed_traits"] = data.get("breeds", {})
+                state["species_medians"] = data.get("species_medians", {})
+                log.info("Loaded traits for %d breeds from %s", len(state["breed_traits"]), resolved_breed)
+            else:
+                log.warning("Breed traits file not found at %s", resolved_breed)
 
-            state["artifact"] = artifact
-            state["model"] = artifact["model"]
-            state["feature_cols"] = list(artifact.get("feature_cols", []))
-            state["train_medians"] = dict(artifact.get("train_medians", {}))
-            log.info("Model loaded successfully from %s (%d features).", resolved_model, len(state["feature_cols"]))
-        else:
-            log.warning("Model file not found at %s", resolved_model)
-    except Exception as e:
-        log.error("Error loading model from %s: %s", resolved_model, e)
+            # 2. Load model artifact
+            resolved_model = resolve_file_path(MODEL_PATH, "model/adoptly_compatibility_model.joblib")
+            if resolved_model.exists():
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    artifact = joblib.load(resolved_model)
 
-    resolved_breed = resolve_file_path(BREED_TRAITS_PATH, "data/adoptly_breed_traits.json")
-    try:
-        if resolved_breed.exists():
-            with open(resolved_breed, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            state["breed_traits"] = data.get("breeds", {})
-            state["species_medians"] = data.get("species_medians", {})
-            log.info("Loaded traits for %d breeds from %s", len(state["breed_traits"]), resolved_breed)
-        else:
-            log.warning("Breed traits file not found at %s", resolved_breed)
-    except Exception as e:
-        log.warning("Failed to load breed traits from %s: %s", resolved_breed, e)
+                state["artifact"] = artifact
+                state["model"] = artifact["model"]
+                state["feature_cols"] = list(artifact.get("feature_cols", []))
+                state["train_medians"] = dict(artifact.get("train_medians", {}))
+                log.info("Model loaded successfully from %s (%d features).", resolved_model, len(state["feature_cols"]))
+            else:
+                log.warning("Model file not found at %s", resolved_model)
+        except Exception as e:
+            log.error("Error loading model: %s", e)
+        finally:
+            _loading_in_progress = False
+
+    return state["model"] is not None
 
 
-import threading
+def _background_loader():
+    # Delay model unpickling slightly so Gunicorn completes socket binding and port scan succeeds instantly
+    time.sleep(1.0)
+    load_artifacts()
+
+
 try:
-    threading.Thread(target=load_artifacts, daemon=True).start()
+    threading.Thread(target=_background_loader, daemon=True, name="ModelLoader").start()
 except Exception as _bg_err:
     log.warning("Could not start background artifact loading: %s", _bg_err)
 
@@ -389,13 +411,12 @@ def compute_explanation(row_df: pd.DataFrame) -> list[dict]:
 
 @app.route("/", methods=["GET"])
 def index():
-    if state["model"] is None:
-        load_artifacts()
     return jsonify({
         "status": "online",
         "service": "Adoptly Compatibility Matching & Scheduling API",
         "version": "1.0.0",
         "model_loaded": state["model"] is not None,
+        "loading": _loading_in_progress,
         "endpoints": {
             "health": "/health (GET)",
             "predict": "/predict (POST)",
@@ -410,7 +431,9 @@ def index():
 def health():
     return jsonify({
         "status": "ok",
+        "service": "adoptly-api",
         "model_loaded": state["model"] is not None,
+        "loading": _loading_in_progress,
         "scikit_learn": sklearn.__version__,
     }), 200
 
@@ -428,9 +451,10 @@ def predict():
     except PermissionError as e:
         return jsonify({"error": str(e)}), 401
 
-    load_artifacts()
     if state["model"] is None:
-        return jsonify({"error": "Model artifact is not loaded on server."}), 500
+        load_artifacts()
+    if state["model"] is None:
+        return jsonify({"error": "Model artifact is initializing on server. Please retry in a few seconds."}), 503
 
     data = request.get_json(silent=True) or {}
     pet = data.get("pet", {})
@@ -485,9 +509,10 @@ def recommend():
     except PermissionError as e:
         return jsonify({"error": str(e)}), 401
 
-    load_artifacts()
     if state["model"] is None:
-        return jsonify({"error": "Model artifact is not loaded on server."}), 500
+        load_artifacts()
+    if state["model"] is None:
+        return jsonify({"error": "Model artifact is initializing on server. Please retry in a few seconds."}), 503
 
     data = request.get_json(silent=True) or {}
     adopter = data.get("adopter", {})
