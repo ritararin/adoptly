@@ -360,6 +360,24 @@ def compute_explanation(row_df: pd.DataFrame) -> list[dict]:
     return factors
 
 
+@app.route("/", methods=["GET"])
+def index():
+    load_artifacts()
+    return jsonify({
+        "status": "online",
+        "service": "Adoptly Compatibility Matching & Scheduling API",
+        "version": "1.0.0",
+        "model_loaded": state["model"] is not None,
+        "endpoints": {
+            "health": "/health (GET)",
+            "predict": "/predict (POST)",
+            "recommend": "/recommend (POST)",
+            "schedule_interview": "/schedule-interview (POST)",
+        },
+        "documentation": "https://github.com/ritararin/adoptly",
+    }), 200
+
+
 @app.route("/health", methods=["GET", "HEAD"])
 def health():
     load_artifacts()
