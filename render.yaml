@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -b 0.0.0.0:$PORT -w 1 --threads 4 app:app
+    startCommand: gunicorn -b 0.0.0.0:$PORT -w 1 --threads 4 --timeout 120 app:app
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -21,4 +21,3 @@ services:
         sync: false
       - key: OAUTH_REFRESH_TOKEN
         sync: false
-

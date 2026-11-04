@@ -7,6 +7,7 @@ child-safety rule, and returns SHAP explanations for top factors.
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import os
@@ -135,32 +136,33 @@ def load_artifacts():
     if state["model"] is not None:
         return
 
-    if MODEL_PATH.exists():
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            artifact = joblib.load(MODEL_PATH)
-        for w in caught:
-            log.warning("While loading model: %s", w.message)
+    try:
+        if MODEL_PATH.exists():
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                artifact = joblib.load(MODEL_PATH)
 
-        state["artifact"] = artifact
-        state["model"] = artifact["model"]
-        state["feature_cols"] = list(artifact.get("feature_cols", []))
-        state["train_medians"] = dict(artifact.get("train_medians", {}))
-        log.info("Model loaded successfully (%d features).", len(state["feature_cols"]))
-    else:
-        log.warning("Model file not found at %s", MODEL_PATH)
+            state["artifact"] = artifact
+            state["model"] = artifact["model"]
+            state["feature_cols"] = list(artifact.get("feature_cols", []))
+            state["train_medians"] = dict(artifact.get("train_medians", {}))
+            log.info("Model loaded successfully (%d features).", len(state["feature_cols"]))
+        else:
+            log.warning("Model file not found at %s", MODEL_PATH)
+    except Exception as e:
+        log.error("Error loading model: %s", e)
 
-    if BREED_TRAITS_PATH.exists():
-        try:
+    try:
+        if BREED_TRAITS_PATH.exists():
             with open(BREED_TRAITS_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
             state["breed_traits"] = data.get("breeds", {})
             state["species_medians"] = data.get("species_medians", {})
             log.info("Loaded traits for %d breeds from %s", len(state["breed_traits"]), BREED_TRAITS_PATH)
-        except Exception as e:
-            log.warning("Failed to load breed traits: %s", e)
-    else:
-        log.warning("Breed traits file not found at %s", BREED_TRAITS_PATH)
+        else:
+            log.warning("Breed traits file not found at %s", BREED_TRAITS_PATH)
+    except Exception as e:
+        log.warning("Failed to load breed traits: %s", e)
 
 
 def get_explainer():
