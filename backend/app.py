@@ -141,18 +141,38 @@ _loading_in_progress = False
 
 
 def resolve_file_path(configured_path: Path, subpath: str) -> Path:
+    filename = Path(subpath).name
     candidates = [
         configured_path,
         BASE_DIR / subpath,
-        Path("backend") / subpath,
-        Path(subpath),
+        BASE_DIR / filename,
+        BASE_DIR / "model" / filename,
+        BASE_DIR / "data" / filename,
+        Path.cwd() / subpath,
+        Path.cwd() / "backend" / subpath,
+        Path.cwd() / filename,
+        Path.cwd() / "model" / filename,
+        Path.cwd() / "data" / filename,
         Path(__file__).resolve().parent / subpath,
         Path(__file__).resolve().parent.parent / subpath,
         Path(__file__).resolve().parent.parent / "backend" / subpath,
     ]
     for c in candidates:
-        if c.exists():
-            return c.resolve()
+        try:
+            if c.exists() and c.is_file():
+                return c.resolve()
+        except Exception:
+            pass
+
+    # Recursive directory search fallback
+    for search_root in [Path.cwd(), BASE_DIR, BASE_DIR.parent]:
+        try:
+            matches = [p for p in search_root.rglob(filename) if p.is_file()]
+            if matches:
+                return matches[0].resolve()
+        except Exception:
+            pass
+
     return configured_path
 
 
@@ -422,12 +442,24 @@ def compute_explanation(row_df: pd.DataFrame) -> list[dict]:
 
 @app.route("/", methods=["GET"])
 def index():
+    if state["model"] is None and not _loading_in_progress:
+        try:
+            threading.Thread(target=load_artifacts, daemon=True, name="WorkerModelLoader").start()
+        except Exception:
+            pass
+
     return jsonify({
         "status": "online",
         "service": "Adoptly Compatibility Matching & Scheduling API",
         "version": "1.0.0",
         "model_loaded": state["model"] is not None,
         "loading": _loading_in_progress,
+        "load_status": state.get("load_status"),
+        "load_error": state.get("load_error"),
+        "model_path": state.get("resolved_model_path"),
+        "model_exists": state.get("model_exists"),
+        "model_size": state.get("model_size"),
+        "breeds_count": len(state.get("breed_traits", {})),
         "endpoints": {
             "health": "/health (GET)",
             "predict": "/predict (POST)",
@@ -440,6 +472,12 @@ def index():
 
 @app.route("/health", methods=["GET", "HEAD"])
 def health():
+    if state["model"] is None and not _loading_in_progress:
+        try:
+            threading.Thread(target=load_artifacts, daemon=True, name="WorkerModelLoader").start()
+        except Exception:
+            pass
+
     return jsonify({
         "status": "ok",
         "service": "adoptly-api",
