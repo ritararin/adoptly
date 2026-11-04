@@ -102,6 +102,12 @@ if ALLOWED_ORIGINS == "*":
 else:
     CORS(app, resources={r"/*": {"origins": ALLOWED_ORIGINS}}, supports_credentials=True)
 
+import threading
+try:
+    threading.Thread(target=load_artifacts, daemon=True).start()
+except Exception as _bg_err:
+    log.warning("Could not start background artifact loading: %s", _bg_err)
+
 # Application state
 state: dict = {
     "model": None,
@@ -364,7 +370,6 @@ def compute_explanation(row_df: pd.DataFrame) -> list[dict]:
 
 @app.route("/", methods=["GET"])
 def index():
-    load_artifacts()
     return jsonify({
         "status": "online",
         "service": "Adoptly Compatibility Matching & Scheduling API",
@@ -382,7 +387,6 @@ def index():
 
 @app.route("/health", methods=["GET", "HEAD"])
 def health():
-    load_artifacts()
     return jsonify({
         "status": "ok",
         "model_loaded": state["model"] is not None,
