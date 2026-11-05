@@ -32,7 +32,8 @@ export function roleFromEmail(email) {
 
   if (admins.includes(normalizedEmail)) return 'admin'
 
-  const shelters = (import.meta.env.VITE_SHELTER_DOMAINS || '')
+  const defaultShelters = 'testshelter.com,ritararin@gmail.com'
+  const shelters = `${defaultShelters},${import.meta.env.VITE_SHELTER_DOMAINS || ''}`
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(Boolean)
