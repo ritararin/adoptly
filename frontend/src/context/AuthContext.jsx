@@ -32,7 +32,7 @@ export function roleFromEmail(email) {
 
   if (admins.includes(normalizedEmail)) return 'admin'
 
-  const defaultShelters = 'testshelter.com,ritararin@gmail.com'
+  const defaultShelters = 'ritararin@gmail.com,rita.palmeris@strathmore.edu'
   const shelters = `${defaultShelters},${import.meta.env.VITE_SHELTER_DOMAINS || ''}`
     .split(',')
     .map(s => s.trim().toLowerCase())
@@ -44,7 +44,7 @@ export function roleFromEmail(email) {
       const cleanEntry = entry.replace(/^@/, '')
       return normalizedEmail === cleanEntry || normalizedEmail === entry
     }
-    // If the entry is a domain (e.g. 'testshelter.com' or '@testshelter.com')
+    // If the entry is a domain (e.g. 'shelter.org' or '@shelter.org')
     const domain = entry.replace(/^@/, '')
     return normalizedEmail.endsWith(`@${domain}`) || normalizedEmail.split('@')[1] === domain
   })
