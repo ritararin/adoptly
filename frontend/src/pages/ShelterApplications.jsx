@@ -14,6 +14,7 @@ import {
   Calendar,
   User,
   Heart,
+  MapPin,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -32,10 +33,15 @@ export default function ShelterApplications() {
     ])
       .then(([appsData, petsData]) => {
         const petsMap = Object.fromEntries(petsData.map(p => [p.id, p]))
-        const enriched = appsData.map(a => ({
-          ...a,
-          pet: a.pet || petsMap[a.petId] || { name: a.petName, id: a.petId }
-        }))
+        const enriched = appsData.map(a => {
+          const matchedPet = petsMap[a.petId] || {}
+          const shelterLocation = a.shelterLocation || matchedPet.location || matchedPet.shelterLocation || ''
+          return {
+            ...a,
+            shelterLocation,
+            pet: a.pet || matchedPet || { name: a.petName, id: a.petId }
+          }
+        })
         setApps(enriched)
       })
       .finally(() => setLoading(false))
@@ -45,7 +51,8 @@ export default function ShelterApplications() {
     const matchesFilter = filter === 'all' || a.status === filter
     const matchesSearch =
       (a.adopterName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (a.petName || '').toLowerCase().includes(search.toLowerCase())
+      (a.petName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (a.shelterLocation || '').toLowerCase().includes(search.toLowerCase())
     return matchesFilter && matchesSearch
   })
 
@@ -107,22 +114,13 @@ export default function ShelterApplications() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                 filter === tab.id
-                  ? 'bg-forest text-cream shadow-sm'
-                  : 'border border-line bg-white text-ink-muted hover:border-forest/30 hover:text-forest'
+                  ? 'bg-forest text-cream shadow-xs font-bold'
+                  : 'bg-white border border-line text-ink-muted hover:border-forest/30 hover:text-ink-head'
               }`}
             >
-              <span>{tab.label}</span>
-              {tab.count > 0 && (
-                <span
-                  className={`rounded-full px-1.5 py-0.2 text-[10px] ${
-                    filter === tab.id ? 'bg-cream/20 text-cream' : 'bg-cream-dim text-ink-muted'
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              )}
+              {tab.label} ({tab.count})
             </button>
           ))}
         </div>
@@ -132,7 +130,7 @@ export default function ShelterApplications() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
           <input
             type="text"
-            placeholder="Search by pet or applicant…"
+            placeholder="Search by pet, applicant or branch…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full rounded-xl border border-line bg-white pl-8 pr-3 py-1.5 text-xs outline-none focus:border-forest focus:ring-2 focus:ring-forest/15"
@@ -186,6 +184,12 @@ export default function ShelterApplications() {
                             </span>
                           </PetHoverPreview>
                           <StatusBadge status={a.status} size="xs" />
+                          {a.shelterLocation && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-forest-wash px-2 py-0.5 text-[10px] font-semibold text-forest">
+                              <MapPin size={10} />
+                              <span>{a.shelterLocation}</span>
+                            </span>
+                          )}
                         </div>
 
                         <p className="text-xs text-ink-muted">

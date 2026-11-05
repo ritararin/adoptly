@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Heart, Sparkles, Zap, HeartHandshake, Quote } from 'lucide-react'
+import { ArrowRight, Heart, Sparkles, Zap, HeartHandshake, Quote, MapPin } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import PetHoverPreview from './PetHoverPreview'
 import { generatePetSummary } from '../lib/petSummary'
@@ -16,6 +16,7 @@ export default function PetCard({ pet, score, summary }) {
 
   const energyLevel = Number(pet?.energyLevel) || 3
   const childFriendly = Number(pet?.childFriendly) || 3
+  const locationStr = pet.location || pet.shelterLocation
 
   return (
     <article className="group relative flex flex-col justify-between overflow-hidden rounded-[26px] border border-line/90 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:border-forest/40 hover:shadow-xl hover:ring-2 hover:ring-forest/10">
@@ -104,6 +105,12 @@ export default function PetCard({ pet, score, summary }) {
               <p className="mt-1 truncate text-xs font-medium text-ink-muted">
                 {[pet.breed || pet.species, pet.size].filter(Boolean).join(' · ')}
               </p>
+              {locationStr && (
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-forest">
+                  <MapPin size={11} className="shrink-0 text-forest" />
+                  <span className="truncate">{locationStr}</span>
+                </div>
+              )}
             </div>
             {score != null && (
               <div className="shrink-0 transition-transform group-hover:scale-105">

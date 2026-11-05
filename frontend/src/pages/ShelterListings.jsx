@@ -4,13 +4,14 @@ import { listPets, createPet, updatePet, deletePet, uploadPetPhoto } from '../li
 import { SPECIES, SIZES, TEMPERAMENTS, ENERGY } from '../lib/options'
 import StatusBadge from '../components/StatusBadge'
 import PetHoverPreview from '../components/PetHoverPreview'
-import { Plus, X, Pencil, Trash2, ImagePlus, Loader2, PawPrint, CheckCircle2, Clock } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, ImagePlus, Loader2, PawPrint, CheckCircle2, Clock, MapPin } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const BLANK = {
   name: '', species: 'Dog', breed: '', age: 1, size: 'Medium',
   temperament: 'Friendly', energyLevel: 3, childFriendly: 4, careRequirements: '',
-  healthStatus: 'Healthy', photoUrl: '', adoptionStatus: 'Available'
+  healthStatus: 'Healthy', photoUrl: '', adoptionStatus: 'Available',
+  location: ''
 }
 
 export default function ShelterListings() {
@@ -30,14 +31,34 @@ export default function ShelterListings() {
   const availablePets = pets.filter(p => p.adoptionStatus === 'Available').length
   const adoptedPets = pets.filter(p => p.adoptionStatus === 'Adopted').length
 
+  const getDefaultLocation = () => {
+    try {
+      const saved = localStorage.getItem('adoptly_shelter_location')
+      if (saved) return saved
+    } catch {}
+    if (user?.email?.includes('strathmore.edu')) return 'Nairobi - Strathmore Hub'
+    return 'Nairobi - Central Shelter'
+  }
+
   const openNew = () => {
-    setForm(BLANK); setPhotoFile(null); setPhotoPreview(''); setErr('')
+    setForm({ ...BLANK, location: getDefaultLocation() })
+    setPhotoFile(null)
+    setPhotoPreview('')
+    setErr('')
   }
+
   const openEdit = p => {
-    setForm(p); setPhotoFile(null); setPhotoPreview(p.photoUrl || ''); setErr('')
+    setForm({ ...p, location: p.location || p.shelterLocation || getDefaultLocation() })
+    setPhotoFile(null)
+    setPhotoPreview(p.photoUrl || '')
+    setErr('')
   }
+
   const closeForm = () => {
-    setForm(null); setPhotoFile(null); setPhotoPreview(''); setErr('')
+    setForm(null)
+    setPhotoFile(null)
+    setPhotoPreview('')
+    setErr('')
   }
 
   const onPickFile = e => {
@@ -52,7 +73,8 @@ export default function ShelterListings() {
 
   const save = async e => {
     e.preventDefault()
-    setBusy(true); setErr('')
+    setBusy(true)
+    setErr('')
     
     try {
       let photoUrl = form.photoUrl || ''
@@ -63,9 +85,16 @@ export default function ShelterListings() {
           photoUrl = await uploadPetPhoto(user.uid, photoFile)
         } catch (uploadErr) {
           console.warn("Image upload failed, saving pet without photo:", uploadErr)
-          // We don't throw here, we just proceed without the photo
         }
       }
+
+      const shelterLocation = (form.location || form.shelterLocation || getDefaultLocation()).trim()
+      try {
+        localStorage.setItem('adoptly_shelter_location', shelterLocation)
+      } catch {}
+
+      const shelterName = user?.name || user?.displayName || 
+        (user?.email?.includes('strathmore') ? 'Strathmore Animal Sanctuary' : 'Adoptly Rescue Center')
 
       // 2. Sanitize the payload to prevent Firestore "undefined" errors
       const data = { 
@@ -73,6 +102,10 @@ export default function ShelterListings() {
         photoUrl, 
         age: Number(form.age) || 1, 
         shelterId: user.uid,
+        shelterEmail: user.email || '',
+        shelterName,
+        location: shelterLocation,
+        shelterLocation,
         name: form.name || '',
         species: form.species || 'Dog',
         breed: form.breed || '',
@@ -190,6 +223,24 @@ export default function ShelterListings() {
           <div><label className="label">Age (years)</label><input className="input" type="number" min="0" step="0.5" {...f('age')} /></div>
           <div><label className="label">Size</label><Select k="size" opts={SIZES} /></div>
           <div><label className="label">Temperament</label><Select k="temperament" opts={TEMPERAMENTS} /></div>
+          
+          {/* Shelter Location Specification */}
+          <div className="sm:col-span-2">
+            <label className="label flex items-center gap-1.5">
+              <MapPin size={13} className="text-forest" />
+              Shelter Location / Branch
+            </label>
+            <input 
+              className="input" 
+              placeholder="e.g. Nairobi (Karen Branch), Nairobi (Central Shelter), or Austin, TX" 
+              required 
+              {...f('location')} 
+            />
+            <p className="mt-1 text-[11px] text-ink-muted">
+              Specify your shelter facility or branch so adopters can differentiate between multiple shelters.
+            </p>
+          </div>
+
           <div>
             <label className="label">Energy level (1 to 5)</label>
             <select className="input" value={form.energyLevel || 3} onChange={e => setForm({ ...form, energyLevel: Number(e.target.value) })}>
@@ -257,7 +308,15 @@ export default function ShelterListings() {
                       <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-forest-wash text-lg shadow-2xs">
                         {p.photoUrl ? <img src={p.photoUrl} alt={p.name} className="h-full w-full object-cover" /> : (p.species === 'Cat' ? '🐱' : '🐶')}
                       </div>
-                      <span className="font-semibold text-ink-head group-hover:text-forest transition-colors underline decoration-dotted decoration-forest/30 underline-offset-4">{p.name}</span>
+                      <div>
+                        <span className="font-semibold text-ink-head group-hover:text-forest transition-colors underline decoration-dotted decoration-forest/30 underline-offset-4">{p.name}</span>
+                        {(p.location || p.shelterLocation) && (
+                          <div className="flex items-center gap-1 text-[11px] text-forest font-medium mt-0.5">
+                            <MapPin size={10} className="shrink-0" />
+                            <span>{p.location || p.shelterLocation}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </PetHoverPreview>
                 </td>

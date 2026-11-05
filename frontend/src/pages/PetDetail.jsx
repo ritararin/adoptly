@@ -8,7 +8,7 @@ import { generatePetSummary } from '../lib/petSummary'
 import ScoreGauge from '../components/ScoreGauge'
 import MatchBreakdown from '../components/MatchBreakdown'
 import StatusBadge from '../components/StatusBadge'
-import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, Info, Heart, Zap, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, Info, Heart, Zap, ShieldCheck, MapPin, Building2 } from 'lucide-react'
 
 export default function PetDetail() {
   const { id } = useParams(); const { user } = useAuth(); const nav = useNavigate()
@@ -24,28 +24,22 @@ export default function PetDetail() {
         if (prof && p) {
           setLoadingMatch(true)
           try {
-            const res = await getCompatibility(p, prof)
-            const factors = (res.top_factors || []).map(tf => ({
-              feature: tf.feature,
-              label: tf.label,
-              detail: `${tf.effect === 'raises' ? 'Raises' : 'Lowers'} (${tf.contribution > 0 ? '+' : ''}${tf.contribution})`,
-              impact: tf.contribution,
-              effect: tf.effect
-            }))
+            // Call the fast, dedicated single-pet endpoint
+            const res = await getCompatibility(prof, p)
+            const topFactors = res.explanation?.top_factors || []
             setMatch({
-              score: res.score != null ? res.score / 100 : 0.5,
-              percentageScore: res.score,
-              recommended: res.recommended !== false,
+              score: res.compatibility_score,
+              recommended: res.recommended,
               exclusion_reason: res.exclusion_reason,
               flags: res.flags || [],
-              contributions: factors,
-              disclaimer: res.disclaimer,
-              summary: generatePetSummary(
-                p,
-                res.score != null ? res.score / 100 : 0.5,
-                factors,
-                res.flags
-              )
+              contributions: topFactors.map(tf => ({
+                feature: tf.feature,
+                label: tf.label,
+                detail: `${tf.effect === 'raises' ? 'Raises' : 'Lowers'} score (${tf.contribution > 0 ? '+' : ''}${tf.contribution})`,
+                impact: tf.contribution,
+                effect: tf.effect
+              })),
+              summary: res.explanation?.summary
             })
           } catch (e) {
             console.warn('getCompatibility failed, using local rubric fallback:', e)
@@ -58,33 +52,51 @@ export default function PetDetail() {
     })()
   }, [id, user])
 
+  const defaultShelterLoc = pet?.location || pet?.shelterLocation || 
+    (pet?.shelterEmail?.includes('strathmore') ? 'Nairobi - Strathmore Hub' : 'Nairobi - Central Shelter')
+  const defaultShelterName = pet?.shelterName || 
+    (pet?.shelterEmail?.includes('strathmore') ? 'Strathmore Animal Sanctuary' : 'Adoptly Rescue Center')
+
   const apply = async () => {
     setBusy(true)
-    await submitApplication({
-      adopterId: user.uid,
-      adopterName: user.name,
-      petId: pet.id,
-      petName: pet.name,
-      petPhotoUrl: pet.photoUrl || '',
-      petBreed: pet.breed || '',
-      petSpecies: pet.species || 'Dog',
-      pet: {
-        id: pet.id,
-        name: pet.name,
-        breed: pet.breed,
-        species: pet.species,
-        photoUrl: pet.photoUrl,
-        age: pet.age,
-        energyLevel: pet.energyLevel,
-        childFriendly: pet.childFriendly,
-        adoptionStatus: pet.adoptionStatus,
-      },
-      shelterId: pet.shelterId,
-      score: match?.score ?? null,
-      contributions: match?.contributions ?? [],
-      adopterProfile: profile
-    })
-    nav('/my-applications')
+    try {
+      await submitApplication({
+        adopterId: user.uid,
+        adopterName: user.name,
+        petId: pet.id,
+        petName: pet.name,
+        petPhotoUrl: pet.photoUrl || '',
+        petBreed: pet.breed || '',
+        petSpecies: pet.species || 'Dog',
+        shelterId: pet.shelterId,
+        shelterEmail: pet.shelterEmail || '',
+        shelterName: defaultShelterName,
+        shelterLocation: defaultShelterLoc,
+        pet: {
+          id: pet.id,
+          name: pet.name,
+          breed: pet.breed,
+          species: pet.species,
+          photoUrl: pet.photoUrl,
+          age: pet.age,
+          energyLevel: pet.energyLevel,
+          childFriendly: pet.childFriendly,
+          adoptionStatus: pet.adoptionStatus,
+          location: defaultShelterLoc,
+          shelterLocation: defaultShelterLoc,
+          shelterName: defaultShelterName,
+        },
+        score: match?.score ?? null,
+        contributions: match?.contributions ?? [],
+        adopterProfile: profile
+      })
+      nav('/my-applications')
+    } catch (e) {
+      console.error('Failed to submit application:', e)
+      alert('Could not submit application. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (!pet) return <p className="text-sm text-ink-muted">Loading…</p>
@@ -138,9 +150,21 @@ export default function PetDetail() {
                 <p className="mt-1 text-xs font-medium text-ink-muted">
                   {pet.breed} · {pet.age} yr{Number(pet.age) === 1 ? '' : 's'} · {pet.size} size
                 </p>
+
+                {/* Shelter Specification */}
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft bg-cream-soft px-2.5 py-1 text-xs font-semibold text-ink-head">
+                    <Building2 size={13} className="text-forest" />
+                    <span>{defaultShelterName}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-forest/20 bg-forest-wash px-2.5 py-1 text-xs font-bold text-forest">
+                    <MapPin size={13} className="text-forest" />
+                    <span>{defaultShelterLoc}</span>
+                  </span>
+                </div>
               </div>
               {pet.temperament && (
-                <span className="rounded-xl border border-forest/20 bg-forest-wash px-3 py-1 text-xs font-bold text-forest">
+                <span className="rounded-xl border border-forest/20 bg-forest-wash px-3 py-1 text-xs font-bold text-forest shrink-0">
                   {pet.temperament}
                 </span>
               )}
@@ -159,13 +183,18 @@ export default function PetDetail() {
             </div>
 
             <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-line-soft pt-4">
-              {[['Species', pet.species], ['Health status', pet.healthStatus || 'Healthy'], ['Care requirements', pet.careRequirements || 'Standard companionship'], ['Adoption status', pet.adoptionStatus]]
-                .map(([k, v]) => (
-                  <div key={k}>
-                    <dt className="label mb-1">{k}</dt>
-                    <dd className="text-sm font-medium text-ink-head">{v || '—'}</dd>
-                  </div>
-                ))}
+              {[
+                ['Species', pet.species], 
+                ['Shelter Location', defaultShelterLoc],
+                ['Health status', pet.healthStatus || 'Healthy'], 
+                ['Adoption status', pet.adoptionStatus],
+                ['Care requirements', pet.careRequirements || 'Standard companionship']
+              ].map(([k, v]) => (
+                <div key={k} className={k === 'Care requirements' ? 'col-span-2' : ''}>
+                  <dt className="label mb-1">{k}</dt>
+                  <dd className="text-sm font-medium text-ink-head">{v || '—'}</dd>
+                </div>
+              ))}
             </dl>
           </div>
         </div>
@@ -239,7 +268,7 @@ export default function PetDetail() {
                     : <><CheckCircle2 size={16} /> Apply to adopt {pet.name}</>}
               </button>
               <p className="mt-3 text-center text-[11px] text-ink-whisper">
-                Your application will be forwarded to the verified shelter team for review.
+                Your application will be forwarded to the verified shelter team at {defaultShelterLoc} for review.
               </p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import StatusBadge from './StatusBadge'
-import { Sparkles, Heart, Zap, ShieldAlert, Award } from 'lucide-react'
+import { Sparkles, Heart, Zap, ShieldAlert, Award, MapPin } from 'lucide-react'
 
 export default function PetHoverPreview({ pet, children, className = '' }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -52,6 +52,8 @@ export default function PetHoverPreview({ pet, children, className = '' }) {
   }, [])
 
   if (!pet) return <>{children}</>
+
+  const locationStr = pet.location || pet.shelterLocation
 
   return (
     <div
@@ -119,6 +121,13 @@ export default function PetHoverPreview({ pet, children, className = '' }) {
                 {pet.breed || 'Unknown breed'}
               </p>
 
+              {locationStr && (
+                <p className="flex items-center gap-1 text-[11px] font-medium text-forest">
+                  <MapPin size={11} className="shrink-0 text-forest" />
+                  <span className="truncate">{locationStr}</span>
+                </p>
+              )}
+
               <p className="text-[11px] text-ink-muted">
                 {pet.age != null ? `${pet.age} yr${Number(pet.age) === 1 ? '' : 's'}` : 'Age unlisted'} · {pet.size || 'Medium size'} · {pet.temperament || 'Friendly'}
               </p>
@@ -145,4 +154,3 @@ export default function PetHoverPreview({ pet, children, className = '' }) {
     </div>
   )
 }
-
