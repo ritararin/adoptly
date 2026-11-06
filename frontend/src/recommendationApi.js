@@ -7,7 +7,19 @@ export function wakeUpRecommendationService() {
   fetch(`${API_URL}/health`).catch(() => {})
 }
 
-export async function getCompatibility(pet, adopter) {
+export async function getCompatibility(arg1, arg2) {
+  let pet = arg1
+  let adopter = arg2
+
+  // Auto-detect if caller passed (adopter, pet) instead of (pet, adopter)
+  if (
+    (arg1?.activityLevel || arg1?.housingType || arg1?.careTime || arg1?.preferredSpecies) &&
+    (arg2?.species || arg2?.breed || arg2?.shelterId || arg2?.adoptionStatus)
+  ) {
+    adopter = arg1
+    pet = arg2
+  }
+
   const user = getAuth().currentUser
   if (!user) throw new Error('Please log in first.')
   const token = await user.getIdToken()
@@ -60,4 +72,3 @@ export async function getBatchRecommendations(pets, adopter, topN = 10) {
     clearTimeout(timer)
   }
 }
-

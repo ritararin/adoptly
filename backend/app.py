@@ -518,6 +518,13 @@ def predict():
     pet = data.get("pet", {})
     adopter = data.get("adopter", {})
 
+    # Guard against inverted pet/adopter arguments
+    if (
+        (pet.get("activityLevel") or pet.get("housingType") or pet.get("careTime") or pet.get("preferredSpecies"))
+        and (adopter.get("species") or adopter.get("breed") or adopter.get("shelterId") or adopter.get("adoptionStatus"))
+    ):
+        pet, adopter = adopter, pet
+
     row, defaulted, flags = build_feature_row(pet, adopter)
     df = pd.DataFrame([row], columns=state["feature_cols"])
 
@@ -547,6 +554,7 @@ def predict():
         "score": round(score, 1),
         "compatibility_score": round(score / 100.0, 4),
         "top_factors": top_factors,
+        "explanation": {"top_factors": top_factors},
         "flags": flags,
         "traits_defaulted": defaulted,
         "exclusion_reason": exclusion_reason,

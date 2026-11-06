@@ -24,22 +24,31 @@ export default function PetDetail() {
         if (prof && p) {
           setLoadingMatch(true)
           try {
-            // Call the fast, dedicated single-pet endpoint
-            const res = await getCompatibility(prof, p)
-            const topFactors = res.explanation?.top_factors || []
+            // Call the fast, dedicated single-pet endpoint (pet first, adopter profile second)
+            const res = await getCompatibility(p, prof)
+            const rawFactors = res.top_factors || res.explanation?.top_factors || []
+
+            let contributions = rawFactors.map(tf => ({
+              feature: tf.feature,
+              label: tf.label,
+              detail: `${tf.effect === 'raises' ? 'Raises' : 'Lowers'} score (${tf.contribution > 0 ? '+' : ''}${tf.contribution})`,
+              impact: tf.contribution,
+              effect: tf.effect
+            }))
+
+            // Fallback to local rubric breakdown if model returned no SHAP factors
+            if (contributions.length === 0) {
+              const localFallback = scorePair(prof, p)
+              contributions = localFallback.contributions || []
+            }
+
             setMatch({
-              score: res.compatibility_score,
+              score: res.compatibility_score ?? (res.score ? res.score / 100 : 0),
               recommended: res.recommended,
               exclusion_reason: res.exclusion_reason,
               flags: res.flags || [],
-              contributions: topFactors.map(tf => ({
-                feature: tf.feature,
-                label: tf.label,
-                detail: `${tf.effect === 'raises' ? 'Raises' : 'Lowers'} score (${tf.contribution > 0 ? '+' : ''}${tf.contribution})`,
-                impact: tf.contribution,
-                effect: tf.effect
-              })),
-              summary: res.explanation?.summary
+              contributions,
+              summary: res.explanation?.summary || res.summary
             })
           } catch (e) {
             console.warn('getCompatibility failed, using local rubric fallback:', e)
