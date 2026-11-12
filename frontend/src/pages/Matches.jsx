@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getAdopterProfile, getRecommendations } from '../lib/api'
+import { getAdopterProfile, getRecommendations, listPets } from '../lib/api'
 import PetCard from '../components/PetCard'
 import PetHoverPreview from '../components/PetHoverPreview'
 import { generatePetSummary } from '../lib/petSummary'
@@ -56,7 +56,11 @@ export default function Matches() {
       })
 
       try {
-        const profile = await getAdopterProfile(user.uid)
+        // Fetch adopter profile and available pets in parallel to save ~300ms network roundtrip
+        const [profile, pets] = await Promise.all([
+          getAdopterProfile(user.uid),
+          listPets({ onlyAvailable: true }),
+        ])
 
         if (cancelled) return
 
@@ -70,7 +74,7 @@ export default function Matches() {
           return
         }
 
-        const recommendations = await getRecommendations(user.uid, profile)
+        const recommendations = await getRecommendations(user.uid, profile, { pets })
 
         if (cancelled) return
 

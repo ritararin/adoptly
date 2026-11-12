@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
+import { wakeUpRecommendationService } from '../recommendationApi'
 import {
   LayoutDashboard,
   Calendar,
@@ -159,6 +160,11 @@ export default function Sidebar() {
                       to={item.path}
                       title={isCollapsed ? item.label : undefined}
                       className="block relative group"
+                      onMouseEnter={() => {
+                        if (item.path === '/matches') {
+                          wakeUpRecommendationService()
+                        }
+                      }}
                     >
                       {isActive && (
                         <motion.div

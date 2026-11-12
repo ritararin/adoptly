@@ -68,6 +68,8 @@ export async function saveAdopterProfile(uid, data) {
     },
     { merge: true }
   )
+
+  clearRecommendationsCache()
 }
 
 // ---------- Pets (FR-03, FR-04) ----------
@@ -167,7 +169,17 @@ const functions = getFunctions(app, 'us-central1')
 
 // ---------- Recommendations (FR-05, FR-06) ----------
 
-export async function getRecommendations(uid, profile) {
+let recommendationsCache = {
+  key: null,
+  timestamp: 0,
+  data: null,
+}
+
+export function clearRecommendationsCache() {
+  recommendationsCache = { key: null, timestamp: 0, data: null }
+}
+
+export async function getRecommendations(uid, profile, options = {}) {
   if (!uid) {
     throw new Error('You must be signed in to get recommendations.')
   }
@@ -176,20 +188,29 @@ export async function getRecommendations(uid, profile) {
     throw new Error('Complete your adopter profile first.')
   }
 
-  const pets = await listPets({ onlyAvailable: true })
+  // Fast in-memory cache check (valid for 3 minutes unless explicitly refreshed)
+  const cacheKey = `${uid}_${profile?.updatedAt?.seconds || profile?.updatedAt || JSON.stringify(profile)}`
+  if (!options.forceRefresh && recommendationsCache.key === cacheKey && (Date.now() - recommendationsCache.timestamp < 180000)) {
+    return recommendationsCache.data
+  }
+
+  // Use preloaded pets if provided by caller (parallelized fetch), otherwise load from Firestore
+  const pets = options.pets || await listPets({ onlyAvailable: true })
   if (pets.length === 0) {
     return []
   }
 
   // Optional local browser mock mode
   if (import.meta.env.VITE_USE_MOCK_ML === 'true') {
-    return pets
+    const scored = pets
       .map((pet) => ({
         petId: pet.id,
         pet,
         ...scorePair(profile, pet),
       }))
       .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+    recommendationsCache = { key: cacheKey, timestamp: Date.now(), data: scored }
+    return scored
   }
 
   try {
@@ -197,7 +218,7 @@ export async function getRecommendations(uid, profile) {
     const recs = apiResult?.recommendations || []
     const petsById = Object.fromEntries(pets.map((p) => [p.id, p]))
 
-    return recs
+    const formatted = recs
       .map((rec) => {
         const pet = petsById[rec.id]
         const topFactors = rec.explanation?.top_factors || []
@@ -225,15 +246,20 @@ export async function getRecommendations(uid, profile) {
         }
       })
       .filter((rec) => rec.pet)
+
+    // Store in cache for instantaneous subsequent page loads
+    recommendationsCache = { key: cacheKey, timestamp: Date.now(), data: formatted }
+    return formatted
   } catch (error) {
     console.warn('ML recommendations endpoint failed, falling back to local rubric:', error)
-    return pets
+    const fallback = pets
       .map((pet) => ({
         petId: pet.id,
         pet,
         ...scorePair(profile, pet),
       }))
       .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+    return fallback
   }
 }
 

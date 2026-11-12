@@ -234,7 +234,14 @@ def load_artifacts() -> bool:
 def _background_loader():
     # Delay model unpickling slightly so Gunicorn completes socket binding and port scan succeeds instantly
     time.sleep(1.0)
-    load_artifacts()
+    if load_artifacts():
+        try:
+            # Pre-warm SHAP TreeExplainer in background so the first recommendation request is instant
+            log.info("Pre-warming SHAP TreeExplainer in background...")
+            get_explainer()
+            log.info("SHAP TreeExplainer pre-warmed successfully in background.")
+        except Exception as _expl_err:
+            log.warning("Could not pre-warm TreeExplainer: %s", _expl_err)
 
 
 try:
@@ -274,14 +281,8 @@ def verify_token(req) -> dict:
     return claims
 
 
-def build_feature_row(pet: dict, adopter: dict) -> tuple[dict, list[str], list[str]]:
-    """Construct one feature vector row conforming to model feature columns."""
-    cols = state["feature_cols"]
-    medians = state["train_medians"]
-    defaulted = []
-    flags = []
-
-    # 1. Adopter features
+def parse_adopter_features(adopter: dict) -> tuple[dict, int]:
+    """Parse adopter dictionary into normalized numerical features once for batching."""
     has_children = 1 if (
         adopter.get("hasChildrenUnder12") in (1, "1", True) or
         "Children (<12)" in str(adopter.get("household", ""))
@@ -310,6 +311,22 @@ def build_feature_row(pet: dict, adopter: dict) -> tuple[dict, list[str], list[s
         "groomingTolerance": float(adopter.get("groomingTolerance") or 3),
         "housingSpace": housing_space,
     }
+    return adopter_vals, has_children
+
+
+def build_feature_row(pet: dict, adopter: dict, precomputed_adopter: dict | None = None, precomputed_has_children: int | None = None) -> tuple[dict, list[str], list[str]]:
+    """Construct one feature vector row conforming to model feature columns."""
+    cols = state["feature_cols"]
+    medians = state["train_medians"]
+    defaulted = []
+    flags = []
+
+    # 1. Adopter features (re-use precomputed values in batch recommendation)
+    if precomputed_adopter is not None and precomputed_has_children is not None:
+        adopter_vals = precomputed_adopter
+        has_children = precomputed_has_children
+    else:
+        adopter_vals, has_children = parse_adopter_features(adopter)
 
     # 2. Pet features
     species_raw = str(pet.get("species") or pet.get("Type") or "dog").lower()
@@ -438,6 +455,38 @@ def compute_explanation(row_df: pd.DataFrame) -> list[dict]:
             "effect": "raises" if c >= 0 else "lowers",
         })
     return factors
+
+
+def compute_batch_explanations(df_subset: pd.DataFrame) -> list[list[dict]]:
+    """Vectorized calculation of SHAP contributions for multiple pets in one call."""
+    explainer = get_explainer()
+    if explainer is None or len(df_subset) == 0:
+        return [[] for _ in range(len(df_subset))]
+
+    shap_vals = explainer.shap_values(df_subset)
+    if isinstance(shap_vals, list):
+        shap_vals = shap_vals[0]
+    if len(shap_vals.shape) == 1:
+        shap_vals = np.expand_dims(shap_vals, axis=0)
+
+    results = []
+    cols = list(df_subset.columns)
+    for row_i in range(len(df_subset)):
+        vals = shap_vals[row_i]
+        order = np.argsort(-np.abs(vals))[:5]
+        factors = []
+        for idx in order:
+            feat = cols[idx]
+            c = float(vals[idx])
+            factors.append({
+                "feature": feat,
+                "label": FEATURE_LABELS.get(feat, feat),
+                "value": float(df_subset.iloc[row_i, idx]),
+                "contribution": round(c, 3),
+                "effect": "raises" if c >= 0 else "lowers",
+            })
+        results.append(factors)
+    return results
 
 
 @app.route("/", methods=["GET"])
@@ -588,16 +637,14 @@ def recommend():
     if not isinstance(pets, list) or len(pets) == 0:
         return jsonify({"recommendations": [], "not_recommended": [], "pets_scored": 0, "disclaimer": DISCLAIMER}), 200
 
-    has_children = 1 if (
-        adopter.get("hasChildrenUnder12") in (1, "1", True) or
-        "Children (<12)" in str(adopter.get("household", ""))
-    ) else 0
+    # Parse adopter features once for all candidate pets
+    adopter_vals, has_children = parse_adopter_features(adopter)
 
     rows, defaulted_list, flags_list, pet_ids = [], [], [], []
     for pet in pets:
         pid = str(pet.get("id") or pet.get("petId") or f"p_{len(pet_ids)}")
         pet_ids.append(pid)
-        r, d, fl = build_feature_row(pet, adopter)
+        r, d, fl = build_feature_row(pet, adopter, adopter_vals, has_children)
         rows.append(r)
         defaulted_list.append(d)
         flags_list.append(fl)
@@ -618,17 +665,19 @@ def recommend():
     top_indices = eligible[:top_n]
 
     recommendations = []
-    for rank, idx in enumerate(top_indices, start=1):
-        expl = compute_explanation(df.iloc[[idx]])
-        recommendations.append({
-            "rank": rank,
-            "id": pet_ids[idx],
-            "score": round(float(raw_scores[idx]), 1),
-            "compatibility_score": round(float(raw_scores[idx]) / 100.0, 4),
-            "flags": flags_list[idx],
-            "traits_defaulted": defaulted_list[idx],
-            "explanation": {"top_factors": expl},
-        })
+    if len(top_indices) > 0:
+        top_df = df.iloc[top_indices]
+        batch_explanations = compute_batch_explanations(top_df)
+        for rank, (idx, expl) in enumerate(zip(top_indices, batch_explanations), start=1):
+            recommendations.append({
+                "rank": rank,
+                "id": pet_ids[idx],
+                "score": round(float(raw_scores[idx]), 1),
+                "compatibility_score": round(float(raw_scores[idx]) / 100.0, 4),
+                "flags": flags_list[idx],
+                "traits_defaulted": defaulted_list[idx],
+                "explanation": {"top_factors": expl},
+            })
 
     not_recommended = []
     for idx in sorted(excluded, key=lambda i: -raw_scores[i]):
