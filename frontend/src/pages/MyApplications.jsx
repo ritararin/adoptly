@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { listApplications, listPets, updateApplication } from '../lib/api'
 import {
@@ -261,15 +260,9 @@ export default function MyApplications() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex items-center gap-3">
                         <PetHoverPreview pet={a.pet}>
-                          <Link
-                            to={`/pets/${a.petId || a.pet?.id}`}
-                            title={`View ${a.petName}'s profile`}
-                            className="group/petlink block"
-                          >
-                            <h3 className="font-serif text-xl font-bold text-ink-head group-hover/petlink:text-forest hover:text-forest transition-colors cursor-pointer underline decoration-dotted decoration-forest/40 underline-offset-4">
-                              {a.petName}
-                            </h3>
-                          </Link>
+                          <h3 className="font-serif text-xl font-bold text-ink-head hover:text-forest transition-colors cursor-pointer underline decoration-dotted decoration-forest/40 underline-offset-4">
+                            {a.petName}
+                          </h3>
                         </PetHoverPreview>
                         <StatusBadge status={a.status} size="xs" />
                       </div>

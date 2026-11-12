@@ -544,20 +544,11 @@ export default function Matches() {
                       </span>
                     </div>
 
-                    {/* Pet Name with Hover Preview & Click-to-View Profile Link */}
+                    {/* Pet Name with Hover Preview */}
                     <PetHoverPreview pet={pet}>
-                      <Link
-                        to={`/pets/${pet.id || topMatch.petId}`}
-                        state={{
-                          score,
-                          summary: heroSummary,
-                        }}
-                        className="group/herotitle block"
-                      >
-                        <h2 className="mt-3 font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white cursor-pointer group-hover/herotitle:text-gold transition-colors">
-                          Meet {pet.name || 'your potential companion'}.
-                        </h2>
-                      </Link>
+                      <h2 className="mt-3 font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white cursor-pointer hover:text-gold transition-colors">
+                        Meet {pet.name || 'your potential companion'}.
+                      </h2>
                     </PetHoverPreview>
 
                     {/* Pet Subtitle (Breed · Age · Size) */}
@@ -614,18 +605,10 @@ export default function Matches() {
                   </div>
                 </div>
 
-                {/* Right Image Column: Framed, Proportional Pet Photo with Click-to-View Profile Link */}
-                <Link
-                  to={`/pets/${pet.id || topMatch.petId}`}
-                  state={{
-                    score,
-                    summary: heroSummary,
-                  }}
-                  title={`View ${pet.name || 'companion'}'s profile`}
-                  className="sm:col-span-5 h-full min-h-[220px] sm:min-h-[280px] block cursor-pointer group/heroimg"
-                >
+                {/* Right Image Column: Framed, Proportional Pet Photo */}
+                <div className="sm:col-span-5 h-full min-h-[220px] sm:min-h-[280px]">
                   {pet.photoUrl ? (
-                    <div className="relative h-full min-h-[220px] sm:min-h-[280px] w-full overflow-hidden rounded-2xl border-2 border-white/20 bg-forest-dark shadow-xl transition-all duration-300 group-hover/heroimg:scale-[1.02] group-hover/heroimg:border-gold/50">
+                    <div className="relative h-full min-h-[220px] sm:min-h-[280px] w-full overflow-hidden rounded-2xl border-2 border-white/20 bg-forest-dark shadow-xl">
                       {/* Ambient blur backdrop */}
                       <img
                         src={pet.photoUrl}
@@ -637,7 +620,7 @@ export default function Matches() {
                       <img
                         src={pet.photoUrl}
                         alt={pet.name || 'Recommended pet'}
-                        className="relative h-full w-full object-cover object-[center_20%] transition-transform duration-700 group-hover/heroimg:scale-105"
+                        className="relative h-full w-full object-cover object-[center_20%] transition-transform duration-700 hover:scale-105"
                       />
                       {/* Subtle bottom vignette gradient for depth */}
                       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
@@ -650,11 +633,11 @@ export default function Matches() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex h-full min-h-[220px] sm:min-h-[280px] w-full items-center justify-center rounded-2xl border-2 border-white/20 bg-white/10 text-6xl shadow-xl select-none transition-all duration-300 group-hover/heroimg:scale-[1.02]">
+                    <div className="flex h-full min-h-[220px] sm:min-h-[280px] w-full items-center justify-center rounded-2xl border-2 border-white/20 bg-white/10 text-6xl shadow-xl select-none">
                       {pet.species === 'Cat' ? '🐱' : '🐶'}
                     </div>
                   )}
-                </Link>
+                </div>
               </div>
             </motion.div>
 

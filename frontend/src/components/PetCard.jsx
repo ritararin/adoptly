@@ -21,13 +21,8 @@ export default function PetCard({ pet, score, summary }) {
   return (
     <article className="group relative flex flex-col justify-between overflow-hidden rounded-[26px] border border-line/90 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:border-forest/40 hover:shadow-xl hover:ring-2 hover:ring-forest/10">
       <div>
-        {/* Photo Container with Vignette Gradient, Proportional Fit, and Click-to-View Profile Link */}
-        <Link
-          to={`/pets/${pet.id}`}
-          state={{ score, summary: finalSummary }}
-          title={`View ${pet.name}'s profile`}
-          className="relative block aspect-[4/3] min-h-[240px] max-h-[300px] w-full overflow-hidden bg-forest-wash cursor-pointer"
-        >
+        {/* Photo Container with Vignette Gradient and Proportional Fit */}
+        <div className="relative aspect-[4/3] min-h-[240px] max-h-[300px] w-full overflow-hidden bg-forest-wash">
           {pet.photoUrl ? (
             <>
               {/* Blurred ambient background to gracefully fill borders */}
@@ -55,7 +50,7 @@ export default function PetCard({ pet, score, summary }) {
 
           {/* Match Score Badge */}
           {scorePct != null && (
-            <div className="absolute left-3.5 top-3.5 z-10">
+            <div className="absolute left-3.5 top-3.5">
               <div
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold shadow-md backdrop-blur-md transition-transform group-hover:scale-105 ${
                   scorePct >= 80
@@ -73,7 +68,7 @@ export default function PetCard({ pet, score, summary }) {
 
           {/* Quick Pet Age Pill Overlay on Image */}
           {pet.age != null && (
-            <div className="absolute left-3.5 bottom-3 text-[11px] font-semibold text-white/95 drop-shadow-sm z-10">
+            <div className="absolute left-3.5 bottom-3 text-[11px] font-semibold text-white/95 drop-shadow-sm">
               {pet.age} year{Number(pet.age) === 1 ? '' : 's'} old
             </div>
           )}
@@ -87,7 +82,7 @@ export default function PetCard({ pet, score, summary }) {
               setSaved(s => !s)
             }}
             aria-label={saved ? 'Remove from saved' : 'Save pet'}
-            className="absolute right-3.5 top-3.5 z-20 flex size-9 items-center justify-center rounded-full bg-white/90 text-ink-muted shadow-md backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-90"
+            className="absolute right-3.5 top-3.5 flex size-9 items-center justify-center rounded-full bg-white/90 text-ink-muted shadow-md backdrop-blur-md transition-all hover:bg-white hover:scale-110 active:scale-90"
           >
             <Heart
               size={16}
@@ -96,22 +91,16 @@ export default function PetCard({ pet, score, summary }) {
               className="transition-transform duration-200"
             />
           </button>
-        </Link>
+        </div>
 
         {/* Content Section */}
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <PetHoverPreview pet={pet}>
-                <Link
-                  to={`/pets/${pet.id}`}
-                  state={{ score, summary: finalSummary }}
-                  className="group/name block"
-                >
-                  <h3 className="font-serif text-[22px] font-bold text-ink-head leading-tight group-hover/name:text-forest group-hover:text-forest transition-colors cursor-pointer">
-                    {pet.name}
-                  </h3>
-                </Link>
+                <h3 className="font-serif text-[22px] font-bold text-ink-head leading-tight group-hover:text-forest transition-colors cursor-pointer">
+                  {pet.name}
+                </h3>
               </PetHoverPreview>
               <p className="mt-1 truncate text-xs font-medium text-ink-muted">
                 {[pet.breed || pet.species, pet.size].filter(Boolean).join(' · ')}
