@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getAdopterProfile, getRecommendations, listPets } from '../lib/api'
+import {
+  getAdopterProfile,
+  getRecommendations,
+  listPets,
+  getCachedRecommendations,
+  clearRecommendationsCache,
+} from '../lib/api'
 import PetCard from '../components/PetCard'
 import PetHoverPreview from '../components/PetHoverPreview'
 import { generatePetSummary } from '../lib/petSummary'
@@ -18,21 +24,74 @@ import {
   TrendingUp,
   TrendingDown,
   Compass,
+  RefreshCw,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function Matches() {
   const { user } = useAuth()
 
-  const [state, setState] = useState({
-    loading: true,
-    profile: null,
-    recs: [],
-    error: '',
+  // Instant cache hydration: if matches were already fetched/cached in memory, render immediately with zero loading flash
+  const [state, setState] = useState(() => {
+    const cached = user?.uid ? getCachedRecommendations(user.uid) : null
+    if (cached?.recs?.length > 0) {
+      return {
+        loading: false,
+        profile: cached.profile,
+        recs: cached.recs,
+        error: '',
+      }
+    }
+    return {
+      loading: true,
+      profile: null,
+      recs: [],
+      error: '',
+    }
   })
 
+  const [refreshing, setRefreshing] = useState(false)
+
   // 'preferred' = filter for preferredSpecies first; 'all' = raw score order across all species
-  const [filterMode, setFilterMode] = useState('preferred')
+  const [filterMode, setFilterMode] = useState(() => {
+    try {
+      return sessionStorage.getItem('adoptly_matches_filter_mode') || 'preferred'
+    } catch {
+      return 'preferred'
+    }
+  })
+
+  const handleFilterModeChange = (mode) => {
+    setFilterMode(mode)
+    try {
+      sessionStorage.setItem('adoptly_matches_filter_mode', mode)
+    } catch {}
+  }
+
+  const handleManualRefresh = async () => {
+    if (!user?.uid || refreshing) return
+    setRefreshing(true)
+    try {
+      clearRecommendationsCache()
+      const [profile, pets] = await Promise.all([
+        getAdopterProfile(user.uid, { forceRefresh: true }),
+        listPets({ onlyAvailable: true }, { forceRefresh: true }),
+      ])
+      if (profile) {
+        const recommendations = await getRecommendations(user.uid, profile, { pets, forceRefresh: true })
+        setState({
+          loading: false,
+          profile,
+          recs: Array.isArray(recommendations) ? recommendations : [],
+          error: '',
+        })
+      }
+    } catch (err) {
+      console.error('Failed to refresh matches:', err)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -48,12 +107,28 @@ export default function Matches() {
         return
       }
 
-      setState({
-        loading: true,
-        profile: null,
-        recs: [],
+      // Check if we already have valid recommendations cached in memory
+      const cached = getCachedRecommendations(user.uid)
+      if (cached?.recs?.length > 0) {
+        // Data is already loaded and presented immediately without any loading skeleton
+        setState((prev) => {
+          if (prev.recs?.length > 0 && !prev.loading) return prev
+          return {
+            loading: false,
+            profile: cached.profile,
+            recs: cached.recs,
+            error: '',
+          }
+        })
+        return
+      }
+
+      // Only display the loading skeleton if no recommendations are already available in view
+      setState((prev) => ({
+        ...prev,
+        loading: prev.recs.length === 0,
         error: '',
-      })
+      }))
 
       try {
         // Fetch adopter profile and available pets in parallel to save ~300ms network roundtrip
@@ -89,14 +164,14 @@ export default function Matches() {
 
         console.error('Unable to load matches:', error)
 
-        setState({
+        setState((prev) => ({
+          ...prev,
           loading: false,
-          profile: null,
-          recs: [],
           error:
-            error?.message ||
-            'We could not load your recommendations. Please try again.',
-        })
+            prev.recs.length > 0
+              ? ''
+              : (error?.message || 'We could not load your recommendations. Please try again.'),
+        }))
       }
     }
 
@@ -295,13 +370,26 @@ export default function Matches() {
           </p>
         </div>
 
-        <Link
-          to="/profile"
-          className="btn-primary flex w-fit items-center gap-2 shadow-lift hover:-translate-y-0.5 transition-all shrink-0"
-        >
-          <SlidersHorizontal size={16} />
-          Update preferences
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            title="Refresh recommendations"
+            className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2.5 text-xs font-bold text-ink-muted hover:text-forest hover:bg-forest-wash transition-colors shadow-2xs disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw size={13} className={refreshing ? 'animate-spin text-forest' : ''} />
+            <span>{refreshing ? 'Refreshing…' : 'Refresh'}</span>
+          </button>
+
+          <Link
+            to="/profile"
+            className="btn-primary flex w-fit items-center gap-2 shadow-lift hover:-translate-y-0.5 transition-all shrink-0"
+          >
+            <SlidersHorizontal size={16} />
+            Update preferences
+          </Link>
+        </div>
       </div>
 
       {/* ---------- SPECIES PREFERENCE EXPLANATION & FILTER BAR ---------- */}
@@ -365,7 +453,7 @@ export default function Matches() {
             <div className="flex items-center gap-1.5 rounded-2xl border border-line bg-cream-soft p-1 self-start lg:self-auto shrink-0">
               <button
                 type="button"
-                onClick={() => setFilterMode('preferred')}
+                onClick={() => handleFilterModeChange('preferred')}
                 className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                   filterMode === 'preferred'
                     ? 'bg-white text-forest shadow-xs'
@@ -384,7 +472,7 @@ export default function Matches() {
 
               <button
                 type="button"
-                onClick={() => setFilterMode('all')}
+                onClick={() => handleFilterModeChange('all')}
                 className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                   filterMode === 'all'
                     ? 'bg-white text-forest shadow-xs'

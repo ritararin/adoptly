@@ -29,9 +29,29 @@ const withId = (documentSnapshot) => ({
 
 // ---------- Adopter profile (FR-02) ----------
 
-export async function getAdopterProfile(uid) {
+let adopterProfileCache = {
+  uid: null,
+  timestamp: 0,
+  data: null,
+}
+
+export function clearAdopterProfileCache() {
+  adopterProfileCache = { uid: null, timestamp: 0, data: null }
+}
+
+export async function getAdopterProfile(uid, options = {}) {
   if (!uid) {
     throw new Error('You must be signed in to load your adopter profile.')
+  }
+
+  // Fast in-memory cache check (valid for 5 minutes unless explicitly refreshed)
+  if (
+    !options.forceRefresh &&
+    adopterProfileCache.uid === uid &&
+    adopterProfileCache.data &&
+    Date.now() - adopterProfileCache.timestamp < 300000
+  ) {
+    return adopterProfileCache.data
   }
 
   const profileRef = doc(
@@ -43,8 +63,15 @@ export async function getAdopterProfile(uid) {
   )
 
   const snapshot = await getDoc(profileRef)
+  const data = snapshot.exists() ? snapshot.data() : null
 
-  return snapshot.exists() ? snapshot.data() : null
+  adopterProfileCache = {
+    uid,
+    timestamp: Date.now(),
+    data,
+  }
+
+  return data
 }
 
 export async function saveAdopterProfile(uid, data) {
@@ -69,12 +96,33 @@ export async function saveAdopterProfile(uid, data) {
     { merge: true }
   )
 
+  clearAdopterProfileCache()
   clearRecommendationsCache()
 }
 
 // ---------- Pets (FR-03, FR-04) ----------
 
-export async function listPets({ shelterId, onlyAvailable } = {}) {
+let availablePetsCache = {
+  timestamp: 0,
+  data: null,
+}
+
+export function clearPetsCache() {
+  availablePetsCache = { timestamp: 0, data: null }
+}
+
+export async function listPets({ shelterId, onlyAvailable } = {}, options = {}) {
+  // Fast in-memory cache for available pets across all shelters (valid for 3 minutes)
+  if (
+    !shelterId &&
+    onlyAvailable &&
+    !options?.forceRefresh &&
+    availablePetsCache.data &&
+    Date.now() - availablePetsCache.timestamp < 180000
+  ) {
+    return availablePetsCache.data
+  }
+
   const clauses = []
 
   if (shelterId) {
@@ -88,7 +136,16 @@ export async function listPets({ shelterId, onlyAvailable } = {}) {
   const petsQuery = query(collection(db, 'pets'), ...clauses)
   const snapshot = await getDocs(petsQuery)
 
-  return snapshot.docs.map(withId)
+  const result = snapshot.docs.map(withId)
+
+  if (!shelterId && onlyAvailable) {
+    availablePetsCache = {
+      timestamp: Date.now(),
+      data: result,
+    }
+  }
+
+  return result
 }
 
 export async function getPet(id) {
@@ -100,6 +157,8 @@ export async function getPet(id) {
 }
 
 export async function createPet(data) {
+  clearPetsCache()
+  clearRecommendationsCache()
   return addDoc(collection(db, 'pets'), {
     ...data,
     createdAt: serverTimestamp(),
@@ -107,10 +166,14 @@ export async function createPet(data) {
 }
 
 export async function updatePet(id, data) {
+  clearPetsCache()
+  clearRecommendationsCache()
   return updateDoc(doc(db, 'pets', id), data)
 }
 
 export async function deletePet(id) {
+  clearPetsCache()
+  clearRecommendationsCache()
   return deleteDoc(doc(db, 'pets', id))
 }
 
@@ -171,12 +234,28 @@ const functions = getFunctions(app, 'us-central1')
 
 let recommendationsCache = {
   key: null,
+  uid: null,
   timestamp: 0,
   data: null,
+  profile: null,
+}
+
+export function getCachedRecommendations(uid) {
+  if (
+    recommendationsCache.data &&
+    recommendationsCache.uid === uid &&
+    Date.now() - recommendationsCache.timestamp < 300000 // 5 minutes validity
+  ) {
+    return {
+      recs: recommendationsCache.data,
+      profile: recommendationsCache.profile,
+    }
+  }
+  return null
 }
 
 export function clearRecommendationsCache() {
-  recommendationsCache = { key: null, timestamp: 0, data: null }
+  recommendationsCache = { key: null, uid: null, timestamp: 0, data: null, profile: null }
 }
 
 export async function getRecommendations(uid, profile, options = {}) {
@@ -188,9 +267,16 @@ export async function getRecommendations(uid, profile, options = {}) {
     throw new Error('Complete your adopter profile first.')
   }
 
-  // Fast in-memory cache check (valid for 3 minutes unless explicitly refreshed)
+  // Fast in-memory cache check (valid for 5 minutes unless explicitly refreshed)
   const cacheKey = `${uid}_${profile?.updatedAt?.seconds || profile?.updatedAt || JSON.stringify(profile)}`
-  if (!options.forceRefresh && recommendationsCache.key === cacheKey && (Date.now() - recommendationsCache.timestamp < 180000)) {
+  if (
+    !options.forceRefresh &&
+    recommendationsCache.key === cacheKey &&
+    recommendationsCache.data &&
+    Date.now() - recommendationsCache.timestamp < 300000
+  ) {
+    // Keep profile reference updated
+    recommendationsCache.profile = profile
     return recommendationsCache.data
   }
 
@@ -209,7 +295,13 @@ export async function getRecommendations(uid, profile, options = {}) {
         ...scorePair(profile, pet),
       }))
       .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
-    recommendationsCache = { key: cacheKey, timestamp: Date.now(), data: scored }
+    recommendationsCache = {
+      key: cacheKey,
+      uid,
+      timestamp: Date.now(),
+      data: scored,
+      profile,
+    }
     return scored
   }
 
@@ -248,7 +340,13 @@ export async function getRecommendations(uid, profile, options = {}) {
       .filter((rec) => rec.pet)
 
     // Store in cache for instantaneous subsequent page loads
-    recommendationsCache = { key: cacheKey, timestamp: Date.now(), data: formatted }
+    recommendationsCache = {
+      key: cacheKey,
+      uid,
+      timestamp: Date.now(),
+      data: formatted,
+      profile,
+    }
     return formatted
   } catch (error) {
     console.warn('ML recommendations endpoint failed, falling back to local rubric:', error)
@@ -259,6 +357,13 @@ export async function getRecommendations(uid, profile, options = {}) {
         ...scorePair(profile, pet),
       }))
       .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+    recommendationsCache = {
+      key: cacheKey,
+      uid,
+      timestamp: Date.now(),
+      data: fallback,
+      profile,
+    }
     return fallback
   }
 }
