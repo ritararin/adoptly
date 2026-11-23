@@ -1,17 +1,36 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { listPets, createPet, updatePet, deletePet, uploadPetPhoto } from '../lib/api'
-import { SPECIES, SIZES, TEMPERAMENTS, ENERGY } from '../lib/options'
+import {
+  SPECIES,
+  TEMPERAMENTS,
+  ENERGY,
+  deriveSizeFromWeight,
+  formatAgeMonthsHelper,
+  formatPetAge,
+  formatPetWeight,
+} from '../lib/options'
 import StatusBadge from '../components/StatusBadge'
 import PetHoverPreview from '../components/PetHoverPreview'
+import BreedSelect from '../components/BreedSelect'
 import { Plus, X, Pencil, Trash2, ImagePlus, Loader2, PawPrint, CheckCircle2, Clock, MapPin } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const BLANK = {
-  name: '', species: 'Dog', breed: '', age: 1, size: 'Medium',
-  temperament: 'Friendly', energyLevel: 3, childFriendly: 4, careRequirements: '',
-  healthStatus: 'Healthy', photoUrl: '', adoptionStatus: 'Available',
-  location: ''
+  name: '',
+  species: 'Dog',
+  breed: '',
+  ageMonths: 12,
+  weightKg: 10,
+  size: 'Medium',
+  temperament: 'Friendly',
+  energyLevel: 3,
+  childFriendly: 4,
+  careRequirements: '',
+  healthStatus: 'Healthy',
+  photoUrl: '',
+  adoptionStatus: 'Available',
+  location: '',
 }
 
 export default function ShelterListings() {
@@ -47,8 +66,20 @@ export default function ShelterListings() {
     setErr('')
   }
 
-  const openEdit = p => {
-    setForm({ ...p, location: p.location || p.shelterLocation || getDefaultLocation() })
+  const openEdit = (p) => {
+    const ageMonths = p.ageMonths != null
+      ? Number(p.ageMonths)
+      : (p.age != null && Number(p.age) > 0 ? Math.round(Number(p.age) * 12) : 12)
+    const weightKg = p.weightKg != null
+      ? Number(p.weightKg)
+      : (p.weight != null ? Number(p.weight) : (p.size === 'Small' ? 8 : p.size === 'Large' ? 28 : 15))
+
+    setForm({
+      ...p,
+      ageMonths,
+      weightKg,
+      location: p.location || p.shelterLocation || getDefaultLocation(),
+    })
     setPhotoFile(null)
     setPhotoPreview(p.photoUrl || '')
     setErr('')
@@ -96,11 +127,20 @@ export default function ShelterListings() {
       const shelterName = user?.name || user?.displayName || 
         (user?.email?.includes('strathmore') ? 'Strathmore Animal Sanctuary' : 'Adoptly Rescue Center')
 
+      const ageMonths = Math.max(1, Math.round(Number(form.ageMonths) || 12))
+      const ageYears = Number((ageMonths / 12).toFixed(1))
+      const weightKg = Math.max(0.5, Number(form.weightKg) || 10)
+      const derivedSize = deriveSizeFromWeight(weightKg)
+
       // 2. Sanitize the payload to prevent Firestore "undefined" errors
       const data = { 
         ...form, 
         photoUrl, 
-        age: Number(form.age) || 1, 
+        ageMonths,
+        age: ageYears,
+        weightKg,
+        weight: weightKg,
+        size: derivedSize,
         shelterId: user.uid,
         shelterEmail: user.email || '',
         shelterName,
@@ -109,7 +149,6 @@ export default function ShelterListings() {
         name: form.name || '',
         species: form.species || 'Dog',
         breed: form.breed || '',
-        size: form.size || 'Medium',
         temperament: form.temperament || 'Friendly',
         energyLevel: Number(form.energyLevel) || 3,
         childFriendly: Number(form.childFriendly) || 3,
@@ -218,10 +257,70 @@ export default function ShelterListings() {
           </div>
 
           <div><label className="label">Name</label><input className="input" required {...f('name')} /></div>
-          <div><label className="label">Species</label><Select k="species" opts={SPECIES} /></div>
-          <div><label className="label">Breed</label><input className="input" required {...f('breed')} /></div>
-          <div><label className="label">Age (years)</label><input className="input" type="number" min="0" step="0.5" {...f('age')} /></div>
-          <div><label className="label">Size</label><Select k="size" opts={SIZES} /></div>
+          <div>
+            <label className="label">Species</label>
+            <select
+              className="input"
+              value={form.species || 'Dog'}
+              onChange={e => {
+                const nextSpecies = e.target.value
+                setForm({ ...form, species: nextSpecies, breed: '' })
+              }}
+            >
+              {SPECIES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Breed</label>
+            <BreedSelect
+              species={form.species || 'Dog'}
+              value={form.breed || ''}
+              onChange={(b) => setForm({ ...form, breed: b })}
+              required
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="label mb-1">Age (months)</label>
+              {form.ageMonths && (
+                <span className="text-[10px] font-semibold text-forest">
+                  {formatAgeMonthsHelper(form.ageMonths)}
+                </span>
+              )}
+            </div>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="300"
+              step="1"
+              required
+              value={form.ageMonths ?? 12}
+              onChange={(e) => setForm({ ...form, ageMonths: e.target.value })}
+              placeholder="e.g. 6 for puppy/kitten, 24 for 2-yr"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="label mb-1">Weight (kg)</label>
+              {form.weightKg && (
+                <span className="text-[10px] font-semibold text-forest">
+                  {deriveSizeFromWeight(form.weightKg)} category
+                </span>
+              )}
+            </div>
+            <input
+              className="input"
+              type="number"
+              min="0.5"
+              max="120"
+              step="0.1"
+              required
+              value={form.weightKg ?? 10}
+              onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
+              placeholder="e.g. 14.5"
+            />
+          </div>
           <div><label className="label">Temperament</label><Select k="temperament" opts={TEMPERAMENTS} /></div>
           
           {/* Shelter Location Specification */}
@@ -297,7 +396,7 @@ export default function ShelterListings() {
       <div className="overflow-hidden rounded-[24px] border border-line/80 bg-white shadow-soft">
         <table className="w-full text-left text-sm">
           <thead className="bg-cream-soft text-[10px] uppercase tracking-[0.14em] text-ink-muted border-b border-line-soft">
-            <tr>{['Pet', 'Species', 'Breed', 'Age', 'Status', ''].map(h => <th key={h} className="px-5 py-4 font-bold">{h}</th>)}</tr>
+            <tr>{['Pet', 'Species', 'Breed', 'Age', 'Weight', 'Status', ''].map(h => <th key={h} className="px-5 py-4 font-bold">{h}</th>)}</tr>
           </thead>
           <tbody>
             {pets.map(p => (
@@ -322,7 +421,8 @@ export default function ShelterListings() {
                 </td>
                 <td className="px-5 py-4 text-ink-muted text-xs font-medium">{p.species}</td>
                 <td className="px-5 py-4 text-ink-muted text-xs font-medium">{p.breed}</td>
-                <td className="px-5 py-4 text-ink-muted text-xs font-medium">{p.age} yr{p.age === 1 ? '' : 's'}</td>
+                <td className="px-5 py-4 text-ink-muted text-xs font-medium">{formatPetAge(p)}</td>
+                <td className="px-5 py-4 text-ink-muted text-xs font-medium">{formatPetWeight(p)}</td>
                 <td className="px-5 py-4"><StatusBadge status={p.adoptionStatus} size="xs" /></td>
                 <td className="px-5 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">

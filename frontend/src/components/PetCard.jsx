@@ -4,6 +4,7 @@ import { ArrowRight, Heart, Sparkles, Zap, HeartHandshake, Quote, MapPin } from 
 import ScoreGauge from './ScoreGauge'
 import PetHoverPreview from './PetHoverPreview'
 import { generatePetSummary } from '../lib/petSummary'
+import { formatPetAge, formatPetWeight } from '../lib/options'
 
 export default function PetCard({ pet, score, summary }) {
   const [saved, setSaved] = useState(false)
@@ -67,9 +68,9 @@ export default function PetCard({ pet, score, summary }) {
           )}
 
           {/* Quick Pet Age Pill Overlay on Image */}
-          {pet.age != null && (
+          {formatPetAge(pet) && (
             <div className="absolute left-3.5 bottom-3 text-[11px] font-semibold text-white/95 drop-shadow-sm">
-              {pet.age} year{Number(pet.age) === 1 ? '' : 's'} old
+              {formatPetAge(pet)}
             </div>
           )}
 
@@ -103,7 +104,7 @@ export default function PetCard({ pet, score, summary }) {
                 </h3>
               </PetHoverPreview>
               <p className="mt-1 truncate text-xs font-medium text-ink-muted">
-                {[pet.breed || pet.species, pet.size].filter(Boolean).join(' · ')}
+                {[pet.breed || pet.species, formatPetWeight(pet)].filter(Boolean).join(' · ')}
               </p>
               {locationStr && (
                 <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-forest">

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import StatusBadge from './StatusBadge'
 import { Sparkles, Heart, Zap, ShieldAlert, Award, MapPin } from 'lucide-react'
+import { formatPetAge, formatPetWeight } from '../lib/options'
 
 export default function PetHoverPreview({ pet, children, className = '' }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -129,7 +130,7 @@ export default function PetHoverPreview({ pet, children, className = '' }) {
               )}
 
               <p className="text-[11px] text-ink-muted">
-                {pet.age != null ? `${pet.age} yr${Number(pet.age) === 1 ? '' : 's'}` : 'Age unlisted'} · {pet.size || 'Medium size'} · {pet.temperament || 'Friendly'}
+                {[formatPetAge(pet) || 'Age unlisted', formatPetWeight(pet) || 'Medium', pet.temperament || 'Friendly'].filter(Boolean).join(' · ')}
               </p>
 
               {/* Energy & Child rating tags */}

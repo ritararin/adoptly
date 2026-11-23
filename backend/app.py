@@ -333,7 +333,7 @@ def build_feature_row(pet: dict, adopter: dict, precomputed_adopter: dict | None
     type_code = 2.0 if "cat" in species_raw or species_raw == "2" else 1.0
     species_key = "cat" if type_code == 2.0 else "dog"
 
-    age_raw = pet.get("pet_age_months")
+    age_raw = pet.get("pet_age_months") if pet.get("pet_age_months") is not None else pet.get("ageMonths")
     if age_raw is None and pet.get("age") is not None:
         try:
             age_raw = float(pet["age"]) * 12.0
@@ -341,7 +341,15 @@ def build_feature_row(pet: dict, adopter: dict, precomputed_adopter: dict | None
             age_raw = 12.0
     pet_age_months = float(age_raw) if age_raw is not None else float(medians.get("pet_age_months", 12.0))
 
-    size_raw = str(pet.get("pet_size_code") or pet.get("size") or "2").lower()
+    size_raw = str(pet.get("pet_size_code") or pet.get("size") or "").lower()
+    if not size_raw and (pet.get("weightKg") is not None or pet.get("weight") is not None):
+        try:
+            w = float(pet.get("weightKg") if pet.get("weightKg") is not None else pet.get("weight"))
+            size_raw = "1" if w < 10.0 else ("2" if w <= 25.0 else "3")
+        except (ValueError, TypeError):
+            size_raw = "2"
+    if not size_raw:
+        size_raw = "2"
     pet_size_code = float(SIZE_MAP.get(size_raw, 2))
 
     fur_raw = str(pet.get("pet_fur_code") or pet.get("furLength") or pet.get("FurLength") or "2").lower()

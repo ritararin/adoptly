@@ -12,6 +12,7 @@ import PetCard from '../components/PetCard'
 import PetHoverPreview from '../components/PetHoverPreview'
 import { generatePetSummary } from '../lib/petSummary'
 import { getFactorSymbol, getFactorDescription } from '../lib/shapExplain'
+import { formatPetAge, formatPetWeight } from '../lib/options'
 import {
   ArrowRight,
   Sparkles,
@@ -551,12 +552,12 @@ export default function Matches() {
                       </h2>
                     </PetHoverPreview>
 
-                    {/* Pet Subtitle (Breed · Age · Size) */}
+                    {/* Pet Subtitle (Breed · Age · Weight) */}
                     <p className="mt-1 text-sm font-medium text-cream/85">
                       {[
                         pet.breed || pet.species,
-                        pet.age != null ? `${pet.age} yr${Number(pet.age) === 1 ? '' : 's'}` : null,
-                        pet.size,
+                        formatPetAge(pet),
+                        formatPetWeight(pet),
                       ]
                         .filter(Boolean)
                         .join(' · ')}

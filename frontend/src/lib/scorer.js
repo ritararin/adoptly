@@ -36,7 +36,9 @@ export function scorePair(a = {}, p = {}) {
   // Home size
   const housingType = adopter.housingType || 'Apartment'
   const small = ['Studio', 'Apartment'].includes(housingType)
-  const sizeStr = typeof pet.size === 'string' && pet.size ? pet.size : 'Medium'
+  const sizeStr = typeof pet.size === 'string' && pet.size
+    ? pet.size
+    : (pet.weightKg != null ? (Number(pet.weightKg) < 10 ? 'Small' : Number(pet.weightKg) <= 25 ? 'Medium' : 'Large') : 'Medium')
   const speciesStr = typeof pet.species === 'string' && pet.species ? pet.species : 'pet'
   const need = sizeStr === 'Large' ? 2 : sizeStr === 'Medium' ? 1 : 0
   const homeFit = small ? (need === 2 ? -0.2 : need === 1 ? 0 : 0.12) : (need === 2 && !housingType.includes('yard') ? 0 : 0.14)

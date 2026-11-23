@@ -5,6 +5,7 @@ import { getPet, getAdopterProfile, submitApplication } from '../lib/api'
 import { scorePair } from '../lib/scorer'
 import { getCompatibility } from '../recommendationApi'
 import { generatePetSummary } from '../lib/petSummary'
+import { formatPetAge, formatPetWeight } from '../lib/options'
 import ScoreGauge from '../components/ScoreGauge'
 import MatchBreakdown from '../components/MatchBreakdown'
 import StatusBadge from '../components/StatusBadge'
@@ -157,7 +158,7 @@ export default function PetDetail() {
               <div>
                 <h1 className="h-serif text-3xl font-bold">{pet.name}</h1>
                 <p className="mt-1 text-xs font-medium text-ink-muted">
-                  {pet.breed} · {pet.age} yr{Number(pet.age) === 1 ? '' : 's'} · {pet.size} size
+                  {[pet.breed || pet.species, formatPetAge(pet), formatPetWeight(pet)].filter(Boolean).join(' · ')}
                 </p>
 
                 {/* Shelter Specification */}
@@ -194,6 +195,8 @@ export default function PetDetail() {
             <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-line-soft pt-4">
               {[
                 ['Species', pet.species], 
+                ['Age', formatPetAge(pet) || '—'],
+                ['Weight', formatPetWeight(pet) || '—'],
                 ['Shelter Location', defaultShelterLoc],
                 ['Health status', pet.healthStatus || 'Healthy'], 
                 ['Adoption status', pet.adoptionStatus],
