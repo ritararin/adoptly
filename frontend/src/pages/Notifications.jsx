@@ -139,8 +139,8 @@ export default function Notifications() {
             notifs.push({
               id: 'shelter-unrated-pets',
               category: 'system',
-              title: 'Ratings Recommended for ML Matching',
-              message: `${unratedPets.length} pet listing(s) are missing shelter ratings for energy level or child-friendliness. Complete them for accurate AI recommendations.`,
+              title: 'Complete Pet Ratings',
+              message: `${unratedPets.length} pet listing(s) are missing ratings for energy level or child-friendliness. Complete them to improve recommendation accuracy.`,
               time: 'Optimization',
               type: 'warning',
               icon: AlertTriangle,
@@ -232,8 +232,8 @@ export default function Notifications() {
             notifs.push({
               id: 'adopter-matches-ready',
               category: 'system',
-              title: 'AI Matches Ready for You',
-              message: 'Your lifestyle profile is active! View your ranked pet recommendations and SHAP feature breakdowns.',
+              title: 'Pet Matches Ready for You',
+              message: 'Your lifestyle profile is active! View your recommended pets and compatibility match breakdowns.',
               time: 'Discovery',
               type: 'info',
               icon: Sparkles,
@@ -248,8 +248,8 @@ export default function Notifications() {
         notifs.push({
           id: 'system-welcome',
           category: 'system',
-          title: 'Welcome to Adoptly 2.0',
-          message: 'Powered by a 100-tree Random Forest compatibility engine with strict child-safety guarantees and virtual Google Meet verification.',
+          title: 'Welcome to Adoptly',
+          message: 'Find your perfect companion with lifestyle-based compatibility matching, fair adoption queues, and virtual shelter interviews.',
           time: 'System',
           type: 'info',
           icon: Info,
