@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { listApplications, listPets } from '../lib/api'
+import { listApplications, listPets, updateApplication } from '../lib/api'
+import { computeQueueRanks } from '../lib/adoptionQueue'
 import StatusBadge from '../components/StatusBadge'
 import PetHoverPreview from '../components/PetHoverPreview'
 import {
@@ -15,6 +16,10 @@ import {
   User,
   Heart,
   MapPin,
+  Clock,
+  ShieldCheck,
+  Scale,
+  Video,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -42,7 +47,31 @@ export default function ShelterApplications() {
             pet: a.pet || matchedPet || { name: a.petName, id: a.petId }
           }
         })
-        setApps(enriched)
+
+        const ranked = computeQueueRanks(enriched)
+
+        // Sync computed ranks to Firestore if changed so adopters can see live position
+        ranked.forEach(app => {
+          if (app.queueRank && (app.queueRank !== app.storedQueueRank || app.queueTotal !== app.storedQueueTotal)) {
+            updateApplication(app.id, {
+              queueRank: app.queueRank,
+              queueTotal: app.queueTotal,
+              storedQueueRank: app.queueRank,
+              storedQueueTotal: app.queueTotal,
+            }).catch(() => {})
+          }
+        })
+
+        // Sort: Priority #1 active applications first, then other pending, then completed
+        ranked.sort((a, b) => {
+          if (a.isPriority && !b.isPriority) return -1
+          if (!a.isPriority && b.isPriority) return 1
+          if (a.status === 'Pending Review' && b.status !== 'Pending Review') return -1
+          if (a.status !== 'Pending Review' && b.status === 'Pending Review') return 1
+          return (a.queueRank || 99) - (b.queueRank || 99)
+        })
+
+        setApps(ranked)
       })
       .finally(() => setLoading(false))
   }, [user?.uid])
@@ -91,6 +120,36 @@ export default function ShelterApplications() {
             {pendingCount} application{pendingCount === 1 ? '' : 's'} awaiting review
           </div>
         )}
+      </div>
+
+      {/* Fair FIFO Queue & 48h SLA Banner */}
+      <div className="rounded-[22px] border border-forest/20 bg-forest-wash/50 p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-forest text-cream shadow-2xs mt-0.5">
+              <Scale size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-serif text-sm font-bold text-ink-head">
+                  Fair First-In, First-Evaluated (FIFO) Queue Active
+                </h2>
+                <span className="rounded-full bg-forest/10 px-2 py-0.5 text-[10px] font-bold text-forest">
+                  48-Hour Review SLA
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-ink-muted leading-relaxed max-w-2xl">
+                When multiple adopters match with the same living conditions, applications are reviewed strictly in chronological order. Applicant #1 is prioritized under a 48-hour SLA to schedule a virtual Google Meet interview before subsequent candidates are evaluated.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 self-start sm:self-center">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-forest/20 bg-white px-3 py-1.5 text-xs font-bold text-forest shadow-2xs">
+              <ShieldCheck size={14} />
+              <span>Non-Discriminatory</span>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -165,7 +224,11 @@ export default function ShelterApplications() {
                 >
                   <Link
                     to={`/shelter/applications/${a.id}`}
-                    className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[22px] border border-line/80 bg-white p-5 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-forest/30 hover:shadow-lift"
+                    className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[22px] border bg-white p-5 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift ${
+                      a.isPriority && a.status === 'Pending Review'
+                        ? 'border-forest/40 ring-1 ring-forest/15'
+                        : 'border-line/80 hover:border-forest/30'
+                    }`}
                   >
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-forest-wash text-forest font-serif font-bold text-base shadow-2xs">
@@ -184,6 +247,36 @@ export default function ShelterApplications() {
                             </span>
                           </PetHoverPreview>
                           <StatusBadge status={a.status} size="xs" />
+
+                          {/* Queue Position Badge */}
+                          {a.queueRank != null && (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                                a.queueRank === 1
+                                  ? 'bg-forest text-cream'
+                                  : 'bg-amber-100 text-amber-900 border border-amber-200'
+                              }`}
+                            >
+                              <span>Queue #{a.queueRank}{a.queueTotal ? ` of ${a.queueTotal}` : ''}</span>
+                            </span>
+                          )}
+
+                          {/* 48-Hour Review SLA Pill for Priority Applicant */}
+                          {a.queueRank === 1 && a.status === 'Pending Review' && a.slaStatus && (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] ${a.slaStatus.badgeColor}`}
+                            >
+                              <Clock size={10} />
+                              <span>{a.slaStatus.text}</span>
+                            </span>
+                          )}
+
+                          {a.queueRank > 1 && a.status === 'Pending Review' && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-cream-dim px-2 py-0.5 text-[10px] text-ink-muted">
+                              <span>Waiting in line</span>
+                            </span>
+                          )}
+
                           {a.shelterLocation && (
                             <span className="inline-flex items-center gap-1 rounded-md bg-forest-wash px-2 py-0.5 text-[10px] font-semibold text-forest">
                               <MapPin size={10} />

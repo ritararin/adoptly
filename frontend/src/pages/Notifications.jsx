@@ -17,6 +17,7 @@ import {
   Clock,
   Loader2,
   Heart,
+  X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -34,8 +35,26 @@ export default function Notifications() {
       return []
     }
   })
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`adoptly_dismissed_notifs_${user?.uid}`)
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })
 
   const isShelter = user?.role === 'shelter'
+
+  const deleteNotification = (id) => {
+    setDismissedIds(prev => {
+      const updated = prev.includes(id) ? prev : [...prev, id]
+      try {
+        localStorage.setItem(`adoptly_dismissed_notifs_${user?.uid}`, JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
+  }
 
   useEffect(() => {
     if (!user?.uid) return
@@ -58,7 +77,7 @@ export default function Notifications() {
               id: `app-pending-${a.id}`,
               category: 'applications',
               title: `New Application: ${a.adopterName || 'Applicant'}`,
-              message: `Submitted an adoption application for “${a.petName}”. Review match breakdown and lifestyle compatibility.`,
+              message: `Submitted an adoption application for “${a.petName}”. 48-hour review SLA active — evaluate profile and schedule Google Meet.`,
               time: a.submittedDate ? new Date(a.submittedDate.seconds ? a.submittedDate.seconds * 1000 : a.submittedDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Recently',
               type: 'urgent',
               icon: FileText,
@@ -265,14 +284,16 @@ export default function Notifications() {
     } catch {}
   }
 
-  const filteredNotifications = notifications.filter(n => {
+  const activeNotifications = notifications.filter(n => !dismissedIds.includes(n.id))
+
+  const filteredNotifications = activeNotifications.filter(n => {
     if (filter === 'unread') return !readIds.includes(n.id)
     if (filter === 'interviews') return n.category === 'interviews'
     if (filter === 'applications') return n.category === 'applications'
     return true
   })
 
-  const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length
+  const unreadCount = activeNotifications.filter(n => !readIds.includes(n.id)).length
 
   if (loading) {
     return (
@@ -316,17 +337,17 @@ export default function Notifications() {
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center gap-2">
         {[
-          { id: 'all', label: 'All Updates', count: notifications.length },
+          { id: 'all', label: 'All Updates', count: activeNotifications.length },
           { id: 'unread', label: 'Unread', count: unreadCount },
           {
             id: 'interviews',
             label: 'Interviews',
-            count: notifications.filter(n => n.category === 'interviews').length,
+            count: activeNotifications.filter(n => n.category === 'interviews').length,
           },
           {
             id: 'applications',
             label: 'Applications',
-            count: notifications.filter(n => n.category === 'applications').length,
+            count: activeNotifications.filter(n => n.category === 'applications').length,
           },
         ].map(tab => (
           <button
@@ -451,6 +472,20 @@ export default function Notifications() {
                         <span>{notif.secondaryActionLabel}</span>
                       </button>
                     )}
+
+                    {/* Delete / Dismiss Notification Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteNotification(notif.id)
+                      }}
+                      title="Dismiss notification"
+                      aria-label="Dismiss notification"
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl border border-line/60 bg-white text-ink-muted/50 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 </motion.div>
               )

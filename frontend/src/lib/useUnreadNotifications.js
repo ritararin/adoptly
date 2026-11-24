@@ -24,11 +24,15 @@ export function useUnreadNotifications(user) {
       q,
       (snapshot) => {
         let readIds = []
+        let dismissedIds = []
         try {
           const stored = localStorage.getItem(`adoptly_read_notifs_${user.uid}`)
           readIds = stored ? JSON.parse(stored) : []
+          const dismissedStored = localStorage.getItem(`adoptly_dismissed_notifs_${user.uid}`)
+          dismissedIds = dismissedStored ? JSON.parse(dismissedStored) : []
         } catch {
           readIds = []
+          dismissedIds = []
         }
 
         const activeAppIds = []
@@ -51,7 +55,9 @@ export function useUnreadNotifications(user) {
           }
         })
 
-        const unreadItems = activeAppIds.filter((id) => !readIds.includes(id))
+        const unreadItems = activeAppIds.filter(
+          (id) => !readIds.includes(id) && !dismissedIds.includes(id)
+        )
         setUnreadCount(unreadItems.length)
         setHasUnread(unreadItems.length > 0)
       },

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getApplication, updateApplication, updatePet, scheduleGoogleMeet, updateInterviewLink, getPet } from '../lib/api'
+import { getApplication, updateApplication, updatePet, scheduleGoogleMeet, updateInterviewLink, getPet, listApplications } from '../lib/api'
+import { computeQueueRanks } from '../lib/adoptionQueue'
 import {
   getGoogleCalendarUrl,
   downloadIcsFile,
@@ -32,6 +33,8 @@ import {
   FileText,
   Edit2,
   AlertCircle,
+  Scale,
+  ShieldCheck,
 } from 'lucide-react'
 
 export default function ApplicationReview() {
@@ -48,14 +51,30 @@ export default function ApplicationReview() {
   const [editingMeetLink, setEditingMeetLink] = useState(false)
   const [meetLinkInput, setMeetLinkInput] = useState('')
   const [savingMeetLink, setSavingMeetLink] = useState(false)
+  const [queueInfo, setQueueInfo] = useState(null)
 
   const load = () =>
     getApplication(id).then(async d => {
       setA(d)
       setNotes(d?.decisionNotes || '')
       if (d?.petId) {
-        const p = await getPet(d.petId).catch(() => null)
+        const [p, allApps] = await Promise.all([
+          getPet(d.petId).catch(() => null),
+          user?.uid ? listApplications({ shelterId: user.uid }).catch(() => []) : Promise.resolve([])
+        ])
         if (p) setPet(p)
+        if (allApps.length > 0) {
+          const ranked = computeQueueRanks(allApps)
+          const found = ranked.find(item => item.id === id)
+          if (found) {
+            setQueueInfo({
+              rank: found.queueRank,
+              total: found.queueTotal,
+              slaStatus: found.slaStatus,
+              isPriority: found.isPriority,
+            })
+          }
+        }
       }
     })
 
@@ -190,6 +209,81 @@ export default function ApplicationReview() {
         </div>
         <StatusBadge status={a.status} />
       </div>
+
+      {/* FIFO Adoption Queue & 48-Hour SLA Status Banner */}
+      {queueInfo && (
+        <div
+          className={`rounded-[22px] border p-5 shadow-2xs ${
+            queueInfo.rank === 1
+              ? 'border-forest/30 bg-forest-wash/40'
+              : 'border-amber-200 bg-amber-50/50'
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex size-10 shrink-0 items-center justify-center rounded-2xl shadow-2xs mt-0.5 ${
+                  queueInfo.rank === 1
+                    ? 'bg-forest text-cream'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                <Scale size={20} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-bold ${
+                      queueInfo.rank === 1
+                        ? 'bg-forest text-cream'
+                        : 'bg-amber-100 text-amber-900 border border-amber-300'
+                    }`}
+                  >
+                    {queueInfo.rank === 1
+                      ? 'Queue Position: #1 Priority Candidate'
+                      : `Queue Position: #${queueInfo.rank} in Line (of ${queueInfo.total})`}
+                  </span>
+
+                  {queueInfo.rank === 1 && a.status === 'Pending Review' && queueInfo.slaStatus && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold ${queueInfo.slaStatus.badgeColor}`}
+                    >
+                      <Clock size={12} />
+                      <span>{queueInfo.slaStatus.text}</span>
+                    </span>
+                  )}
+
+                  {a.status === 'Interview Scheduled' && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 text-xs font-bold">
+                      <Video size={12} />
+                      <span>Interview Stage Active</span>
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-ink-muted leading-relaxed max-w-2xl">
+                  {queueInfo.rank === 1 ? (
+                    <>
+                      <strong>Non-Discriminatory First-In, First-Evaluated Protocol:</strong> This applicant was first to apply for <strong>“{a.petName}”</strong> among candidates with matching living conditions. Shelters evaluate Applicant #1 within a <strong>48-Hour Review SLA</strong> before proceeding to subsequent applicants.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Fair FIFO Queue Active:</strong> Candidate #{queueInfo.rank} is queued behind earlier qualified applicant(s). Under Adoptly’s non-discriminatory protocol, subsequent applicants are evaluated in submission order if earlier candidates do not complete adoption.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 self-start sm:self-center">
+              <span className="inline-flex items-center gap-1 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink-muted shadow-2xs">
+                <ShieldCheck size={14} className="text-forest" />
+                <span>Fair Evaluation</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Column: Applicant Profile & Match Breakdown */}

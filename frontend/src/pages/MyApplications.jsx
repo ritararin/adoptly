@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { listApplications, listPets, updateApplication } from '../lib/api'
+import { getSlaStatus } from '../lib/adoptionQueue'
 import {
   getGoogleCalendarUrl,
   downloadIcsFile,
@@ -24,6 +25,8 @@ import {
   ChevronUp,
   MapPin,
   Building2,
+  Scale,
+  ShieldCheck,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -102,6 +105,7 @@ export default function MyApplications() {
             : 'Adoptly Rescue Center')
 
         const dateStr = formatSubmittedDate(a.submittedDate || a.createdAt)
+        const slaStatus = getSlaStatus(a)
 
         return {
           ...a,
@@ -109,6 +113,9 @@ export default function MyApplications() {
           shelterName,
           submittedDateStr: dateStr,
           timestamp: getAppTimestamp(a),
+          slaStatus,
+          queueRank: a.queueRank || 1,
+          queueTotal: a.queueTotal || 1,
           pet: {
             ...matchedPet,
             ...pet,
@@ -176,6 +183,20 @@ export default function MyApplications() {
           Track the status of every pet you have applied for, access your virtual verification interviews,
           and add appointments to your personal calendar.
         </p>
+      </div>
+
+      {/* Fair FIFO Policy Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-forest/15 bg-forest-wash/40 px-5 py-3.5 shadow-2xs">
+        <div className="flex items-center gap-2.5 text-xs text-ink-muted">
+          <Scale size={16} className="text-forest shrink-0" />
+          <span>
+            <strong className="text-ink-head">Fair FIFO Queue Active:</strong> When multiple adopters match with the same living conditions, applications are evaluated in strict chronological order under a 48-hour review SLA to eliminate selection bias.
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 self-start sm:self-auto rounded-lg border border-forest/20 bg-white px-2.5 py-1 text-[11px] font-bold text-forest shadow-2xs">
+          <ShieldCheck size={13} />
+          <span>Non-Discriminatory</span>
+        </span>
       </div>
 
       {apps.length === 0 ? (
@@ -294,6 +315,57 @@ export default function MyApplications() {
                       )}
                     </div>
                   </div>
+
+                  {/* FIFO Queue & Review SLA Status Box for Pending Applications */}
+                  {a.status === 'Pending Review' && (
+                    <div className="mt-4 rounded-2xl border border-line/80 bg-cream-soft/60 p-4 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
+                              a.queueRank === 1 || !a.queueRank
+                                ? 'bg-forest text-cream shadow-2xs'
+                                : 'bg-amber-100 text-amber-900 border border-amber-300'
+                            }`}
+                          >
+                            <Scale size={13} />
+                            <span>
+                              {a.queueRank === 1 || !a.queueRank
+                                ? 'Queue Position: #1 in Line'
+                                : `Queue Position: #${a.queueRank} in Line${a.queueTotal ? ` (of ${a.queueTotal})` : ''}`}
+                            </span>
+                          </span>
+
+                          {/* 48-Hour SLA Status Pill for Priority Candidate */}
+                          {(a.queueRank === 1 || !a.queueRank) && a.slaStatus && (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${a.slaStatus.badgeColor}`}
+                            >
+                              <Clock size={11} />
+                              <span>{a.slaStatus.text}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-whisper">
+                          <ShieldCheck size={12} className="text-forest" />
+                          <span>Fair FIFO Scheduling</span>
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-ink-muted leading-relaxed">
+                        {a.queueRank === 1 || !a.queueRank ? (
+                          <>
+                            You are <strong className="text-forest">#1 in line</strong> for “{a.petName}”! Under Adoptly’s non-discriminatory placement policy, the shelter evaluates applications within a <strong>48-hour review SLA</strong> and will book your virtual Google Meet interview shortly.
+                          </>
+                        ) : (
+                          <>
+                            You are <strong className="text-ink-head">#{a.queueRank} in line</strong> for “{a.petName}”. When multiple adopters match with the same living conditions, Adoptly evaluates candidates in strict chronological order to eliminate arbitrary bias. If an earlier applicant does not proceed, your application is next.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  )}
 
                   {/* If Interview Scheduled: Prominent Calendar & Meet Hub */}
                   {a.status === 'Interview Scheduled' && (
