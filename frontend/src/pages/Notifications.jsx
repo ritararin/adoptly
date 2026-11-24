@@ -44,14 +44,37 @@ export default function Notifications() {
     }
   })
 
+  // Synchronize read and dismissed IDs whenever user loads or updates
+  useEffect(() => {
+    if (!user?.uid) return
+    const syncState = () => {
+      try {
+        const stored = localStorage.getItem(`adoptly_read_notifs_${user.uid}`)
+        if (stored) setReadIds(JSON.parse(stored))
+        const dismissed = localStorage.getItem(`adoptly_dismissed_notifs_${user.uid}`)
+        if (dismissed) setDismissedIds(JSON.parse(dismissed))
+      } catch {}
+    }
+    syncState()
+    window.addEventListener('adoptly_notifications_updated', syncState)
+    window.addEventListener('storage', syncState)
+    return () => {
+      window.removeEventListener('adoptly_notifications_updated', syncState)
+      window.removeEventListener('storage', syncState)
+    }
+  }, [user?.uid])
+
   const isShelter = user?.role === 'shelter'
 
   const deleteNotification = (id) => {
     setDismissedIds(prev => {
       const updated = prev.includes(id) ? prev : [...prev, id]
-      try {
-        localStorage.setItem(`adoptly_dismissed_notifs_${user?.uid}`, JSON.stringify(updated))
-      } catch {}
+      if (user?.uid) {
+        try {
+          localStorage.setItem(`adoptly_dismissed_notifs_${user.uid}`, JSON.stringify(updated))
+        } catch {}
+      }
+      window.dispatchEvent(new CustomEvent('adoptly_notifications_updated'))
       return updated
     })
   }
@@ -268,20 +291,28 @@ export default function Notifications() {
   }, [user?.uid, isShelter])
 
   const markAllAsRead = () => {
-    const allIds = notifications.map(n => n.id)
+    const allIds = Array.from(
+      new Set([...readIds, ...notifications.map(n => n.id)])
+    )
     setReadIds(allIds)
-    try {
-      localStorage.setItem(`adoptly_read_notifs_${user?.uid}`, JSON.stringify(allIds))
-    } catch {}
+    if (user?.uid) {
+      try {
+        localStorage.setItem(`adoptly_read_notifs_${user.uid}`, JSON.stringify(allIds))
+      } catch {}
+    }
+    window.dispatchEvent(new CustomEvent('adoptly_notifications_updated'))
   }
 
   const markSingleAsRead = (id) => {
     if (readIds.includes(id)) return
     const updated = [...readIds, id]
     setReadIds(updated)
-    try {
-      localStorage.setItem(`adoptly_read_notifs_${user?.uid}`, JSON.stringify(updated))
-    } catch {}
+    if (user?.uid) {
+      try {
+        localStorage.setItem(`adoptly_read_notifs_${user.uid}`, JSON.stringify(updated))
+      } catch {}
+    }
+    window.dispatchEvent(new CustomEvent('adoptly_notifications_updated'))
   }
 
   const activeNotifications = notifications.filter(n => !dismissedIds.includes(n.id))
@@ -323,15 +354,19 @@ export default function Notifications() {
           </p>
         </div>
 
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="inline-flex items-center gap-1.5 self-start rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-bold text-forest hover:bg-forest-wash hover:border-forest/30 transition-all shadow-2xs sm:self-auto"
-          >
-            <CheckCheck size={14} />
-            <span>Mark all as read ({unreadCount})</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={markAllAsRead}
+          disabled={unreadCount === 0}
+          className={`inline-flex items-center gap-1.5 self-start rounded-xl border px-3.5 py-2 text-xs font-bold transition-all shadow-2xs sm:self-auto ${
+            unreadCount > 0
+              ? 'border-line bg-white text-forest hover:bg-forest-wash hover:border-forest/30 cursor-pointer active:scale-95'
+              : 'border-line/60 bg-cream-soft text-ink-whisper cursor-default opacity-80'
+          }`}
+        >
+          <CheckCheck size={14} className={unreadCount > 0 ? 'text-forest' : 'text-ink-whisper'} />
+          <span>{unreadCount > 0 ? `Mark all as read (${unreadCount})` : 'All caught up'}</span>
+        </button>
       </div>
 
       {/* Filter Tabs */}
