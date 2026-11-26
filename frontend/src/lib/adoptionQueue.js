@@ -10,17 +10,28 @@ export const SLA_HOURS = 48
 
 export function getAppTimestamp(app) {
   if (!app) return 0
+  if (typeof app === 'number') return app
+  if (app.submittedAt) {
+    const t = Number(app.submittedAt)
+    if (!isNaN(t) && t > 0) return t
+  }
   if (app.submittedDate?.toMillis) return app.submittedDate.toMillis()
   if (app.submittedDate?.seconds) return app.submittedDate.seconds * 1000
+  if (typeof app.submittedDate === 'number') return app.submittedDate
   if (app.submittedDate) {
     const t = new Date(app.submittedDate).getTime()
     if (!isNaN(t)) return t
   }
   if (app.createdAt?.toMillis) return app.createdAt.toMillis()
   if (app.createdAt?.seconds) return app.createdAt.seconds * 1000
+  if (typeof app.createdAt === 'number') return app.createdAt
   if (app.createdAt) {
     const t = new Date(app.createdAt).getTime()
     if (!isNaN(t)) return t
+  }
+  if (app.timestamp) {
+    const t = Number(app.timestamp)
+    if (!isNaN(t) && t > 0) return t
   }
   return 0
 }
@@ -135,3 +146,105 @@ export function computeQueueRanks(applications) {
 
   return results
 }
+
+/**
+ * Resolves the live FIFO queue rank, total, priority flag, and SLA status
+ * for an individual application among all queue entries for that pet.
+ * Ensures strict chronological ordering (FIFO) so earlier applicants
+ * hold priority, and later applicants are accurately placed next in line.
+ */
+export function resolveQueuePosition(app, queueEntries = []) {
+  if (!app) {
+    return { queueRank: 1, queueTotal: 1, isPriority: true, slaStatus: null }
+  }
+
+  const appId = app.id || app.appId
+  const adopterId = app.adopterId
+
+  // Clone entries list and ensure this app is represented
+  const entriesCopy = [...queueEntries]
+  const existingIdx = entriesCopy.findIndex(
+    e =>
+      (appId && (e.appId === appId || e.id === appId)) ||
+      (!appId && adopterId && e.adopterId === adopterId)
+  )
+
+  let currentStatus = app.status || 'Pending Review'
+
+  if (existingIdx >= 0) {
+    const existingStatus = entriesCopy[existingIdx].status
+    const appStatus = app.status
+    // Give precedence to terminal or scheduled status
+    currentStatus =
+      appStatus === 'Cancelled' ||
+      appStatus === 'Adoption Completed' ||
+      appStatus === 'Rejected' ||
+      appStatus === 'Failed Adoption'
+        ? appStatus
+        : existingStatus || appStatus || 'Pending Review'
+
+    entriesCopy[existingIdx] = {
+      ...entriesCopy[existingIdx],
+      ...app,
+      id: appId,
+      appId,
+      status: currentStatus,
+    }
+  } else if (appId) {
+    entriesCopy.push({
+      ...app,
+      id: appId,
+      appId,
+      status: currentStatus,
+    })
+  }
+
+  const isTerminal =
+    currentStatus === 'Adoption Completed' ||
+    currentStatus === 'Cancelled' ||
+    currentStatus === 'Failed Adoption' ||
+    currentStatus === 'Rejected'
+
+  // Active applications: 'Interview Scheduled' or 'Pending Review'
+  const active = entriesCopy.filter(
+    e => e.status === 'Pending Review' || e.status === 'Interview Scheduled'
+  )
+
+  // Interview Scheduled applicant holds active slot #1
+  const scheduled = active.filter(e => e.status === 'Interview Scheduled')
+  // Pending applications sorted chronologically ascending (earliest submission first)
+  const pending = active
+    .filter(e => e.status === 'Pending Review')
+    .sort((a, b) => getAppTimestamp(a) - getAppTimestamp(b))
+
+  const activeOrdered = [...scheduled, ...pending]
+  const totalActive = activeOrdered.length
+
+  if (isTerminal) {
+    return {
+      queueRank: null,
+      queueTotal: totalActive,
+      isPriority: false,
+      slaStatus: null,
+    }
+  }
+
+  const myRankIdx = activeOrdered.findIndex(
+    e =>
+      (appId && (e.appId === appId || e.id === appId)) ||
+      (!appId && adopterId && e.adopterId === adopterId)
+  )
+
+  const queueRank = myRankIdx >= 0 ? myRankIdx + 1 : (app.queueRank || 1)
+  const queueTotal = Math.max(totalActive, queueRank, app.queueTotal || 1)
+  const isPriority = queueRank === 1
+  const slaStatus = getSlaStatus(app)
+
+  return {
+    queueRank,
+    queueTotal,
+    isPriority,
+    slaStatus,
+  }
+}
+

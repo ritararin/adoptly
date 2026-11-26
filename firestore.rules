@@ -2,6 +2,79 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    //   Document ID: Firebase Auth UID
+    //   Fields:
+    //     - email: string (required)
+    //     - name: string (optional)
+    //     - role: string (required, 'adopter' | 'shelter' | 'admin')
+    //     - emailVerified: bool (optional)
+    //     - createdAt: timestamp (optional)
+    //
+    // Subcollection: /users/{userId}/adopterProfiles/{docId} (e.g. 'main')
+    //   Fields:
+    //     - housingType, hasYard, activityLevel, etc.
+    //     - updatedAt: timestamp
+    //
+    // Collection: /pets/{petId}
+    //   Fields:
+    //     - name: string (required)
+    //     - species: string (required)
+    //     - breed: string (optional)
+    //     - adoptionStatus: string ('Available' | 'Pending' | 'Adopted')
+    //     - shelterId: string (required)
+    //     - shelterName: string (optional)
+    //     - shelterLocation: string (optional)
+    //     - createdAt: timestamp (optional)
+    //
+    // Collection: /adoptionApplications/{appId}
+    //   Fields:
+    //     - adopterId: string (required, applicant Auth UID)
+    //     - adopterName: string (optional)
+    //     - petId: string (required)
+    //     - petName: string (optional)
+    //     - shelterId: string (required)
+    //     - status: string (required, 'Pending Review' | 'Interview Scheduled' | 'Rejected' | 'Adoption Completed' | 'Failed Adoption' | 'Cancelled')
+    //     - submittedDate: timestamp (required)
+    //     - queueRank: number (optional, live FIFO rank)
+    //     - queueTotal: number (optional, live FIFO queue total)
+    //     - storedQueueRank: number (optional)
+    //     - storedQueueTotal: number (optional)
+    //     - decisionNotes: string (optional)
+    //     - interviewLink: string (optional)
+    //     - updatedAt: timestamp (optional)
+    //
+    // Collection: /petQueues/{petId}
+    //   Fields:
+    //     - petId: string (optional)
+    //     - totalEntries: number (optional)
+    //     - lastUpdated: timestamp (optional)
+    //
+    // Subcollection: /petQueues/{petId}/entries/{entryId}
+    //   Fields:
+    //     - appId: string (required, application document ID)
+    //     - petId: string (required, pet document ID)
+    //     - adopterId: string (required, applicant Auth UID)
+    //     - status: string (required, application status)
+    //     - submittedDate: timestamp (required, timestamp for FIFO queue sorting)
+    //
+    // Collection: /compatibilityScores/{scoreId}
+    //   Fields:
+    //     - adopterId: string (required)
+    //     - petId: string (required)
+    //     - score: number (required)
+    //     - shapValues: list (optional)
+    //     - generatedAt: timestamp (required)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -13,6 +86,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'shelter';
     }
 
+    // ===============================================================
+    // Security Rules
+    // ===============================================================
+
+    // Users and Adopter Profiles
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
       
@@ -21,27 +99,70 @@ service cloud.firestore {
       }
     }
 
+    // Pets collection (read by all signed-in users, managed by verified shelters)
     match /pets/{petId} {
       allow read: if isSignedIn();
       // Only shelters can write, using the null-safe function
       allow write: if isShelter();
     }
 
+    // Adoption Applications
     match /adoptionApplications/{appId} {
-      // Null-safe read check
+      // Null-safe read check: Applicant adopter or verified shelter
       allow read: if isSignedIn() && (
         (resource.data.adopterId != null && resource.data.adopterId == request.auth.uid) 
         || isShelter()
       );
-      // Null-safe create check
+
+      // Null-safe create check: Signed-in applicant creates their own application
       allow create: if isSignedIn() 
         && request.resource.data.adopterId != null 
         && request.auth.uid == request.resource.data.adopterId;
-      allow update: if isShelter();
+
+      // Update check:
+      // 1. Shelters can update any application field
+      // 2. Adopters can only update their own application when setting status to 'Cancelled'
+      //    or synchronizing queueRank/queueTotal metadata (no modifying notes, scores, or ownership)
+      allow update: if isShelter() || (
+        isSignedIn()
+        && resource.data.adopterId != null
+        && resource.data.adopterId == request.auth.uid
+        && request.resource.data.adopterId == resource.data.adopterId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'queueRank', 'queueTotal', 'storedQueueRank', 'storedQueueTotal', 'updatedAt'
+        ])
+        && (
+          request.resource.data.status == 'Cancelled'
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+        )
+      );
     }
 
+    // Adoption Queue (Non-discriminatory FIFO Queue)
+    match /petQueues/{petId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+
+      match /entries/{entryId} {
+        // Queue positions are public non-sensitive metadata for authenticated users
+        allow read: if isSignedIn();
+
+        // Adopters can create queue entries for their own applications
+        allow create: if isSignedIn() 
+          && request.resource.data.adopterId != null 
+          && request.resource.data.adopterId == request.auth.uid;
+
+        // Entry owner or verified shelter can update or delete queue entries
+        allow update, delete: if isSignedIn() && (
+          (resource.data.adopterId != null && resource.data.adopterId == request.auth.uid) 
+          || isShelter()
+        );
+      }
+    }
+
+    // ML Compatibility Scores (read-only for applicant, written via Admin SDK in Cloud Functions)
     match /compatibilityScores/{scoreId} {
-      allow read: if isSignedIn() && resource.data.adopterId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.adopterId != null && resource.data.adopterId == request.auth.uid;
       allow write: if false;
     }
   }

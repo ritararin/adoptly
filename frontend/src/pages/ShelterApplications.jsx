@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { listApplications, listPets, updateApplication } from '../lib/api'
-import { computeQueueRanks } from '../lib/adoptionQueue'
+import { listApplications, listPets, updateApplication, recordPetQueueEntry } from '../lib/api'
+import { computeQueueRanks, getAppTimestamp } from '../lib/adoptionQueue'
 import StatusBadge from '../components/StatusBadge'
 import PetHoverPreview from '../components/PetHoverPreview'
 import {
@@ -50,7 +50,7 @@ export default function ShelterApplications() {
 
         const ranked = computeQueueRanks(enriched)
 
-        // Sync computed ranks to Firestore if changed so adopters can see live position
+        // Sync computed ranks to Firestore & petQueues so adopters can see live position
         ranked.forEach(app => {
           if (app.queueRank && (app.queueRank !== app.storedQueueRank || app.queueTotal !== app.storedQueueTotal)) {
             updateApplication(app.id, {
@@ -58,6 +58,21 @@ export default function ShelterApplications() {
               queueTotal: app.queueTotal,
               storedQueueRank: app.queueRank,
               storedQueueTotal: app.queueTotal,
+              petId: app.petId,
+            }).catch(() => {})
+          }
+
+          // Ensure entry is synchronized in the pet's shared queue
+          if (app.petId && app.id) {
+            recordPetQueueEntry(app.petId, app.id, {
+              appId: app.id,
+              petId: app.petId,
+              adopterId: app.adopterId,
+              status: app.status,
+              submittedDate: app.submittedDate || app.createdAt || new Date(),
+              submittedAt: getAppTimestamp(app),
+              queueRank: app.queueRank,
+              queueTotal: app.queueTotal,
             }).catch(() => {})
           }
         })

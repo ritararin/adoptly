@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { listApplications, listPets, updateApplication } from '../lib/api'
-import { getSlaStatus } from '../lib/adoptionQueue'
+import {
+  listApplications,
+  listPets,
+  updateApplication,
+  getPetQueueEntries,
+  recordPetQueueEntry,
+} from '../lib/api'
+import { getSlaStatus, resolveQueuePosition } from '../lib/adoptionQueue'
 import {
   getGoogleCalendarUrl,
   downloadIcsFile,
@@ -43,6 +49,20 @@ export default function MyApplications() {
         listPets({ onlyAvailable: false }),
       ])
       const petsMap = Object.fromEntries(petsData.map(p => [p.id, p]))
+
+      // Retrieve all active queue entries for the pets the adopter has applied to
+      const petIds = [...new Set(appsData.map(a => a.petId).filter(Boolean))]
+      const queueEntriesMap = {}
+      await Promise.all(
+        petIds.map(async (pId) => {
+          try {
+            const entries = await getPetQueueEntries(pId)
+            queueEntriesMap[pId] = entries
+          } catch {
+            queueEntriesMap[pId] = []
+          }
+        })
+      )
 
       const getAppTimestamp = (a) => {
         if (a.submittedDate?.toMillis) return a.submittedDate.toMillis()
@@ -103,7 +123,41 @@ export default function MyApplications() {
             : 'Adoptly Rescue Center')
 
         const dateStr = formatSubmittedDate(a.submittedDate || a.createdAt)
-        const slaStatus = getSlaStatus(a)
+
+        // Compute live FIFO queue position using shared pet queue entries
+        const petQueueEntries = queueEntriesMap[a.petId] || []
+        
+        // Self-heal / backfill into petQueues if missing (for legacy submissions)
+        const appEntry = petQueueEntries.find(e => e.appId === a.id || e.id === a.id)
+        if (!appEntry && a.petId && a.id) {
+          recordPetQueueEntry(a.petId, a.id, {
+            appId: a.id,
+            petId: a.petId,
+            adopterId: a.adopterId || user.uid,
+            status: a.status || 'Pending Review',
+            submittedDate: a.submittedDate || a.createdAt || new Date(),
+            submittedAt: getAppTimestamp(a) || Date.now(),
+          }).catch(() => {})
+        }
+
+        const queueInfo = resolveQueuePosition(a, petQueueEntries)
+        const queueRank = queueInfo.queueRank ?? a.queueRank ?? 1
+        const queueTotal = queueInfo.queueTotal ?? a.queueTotal ?? 1
+        const slaStatus = queueInfo.slaStatus || getSlaStatus(a)
+
+        // Non-blocking sync to application doc if rank changed
+        if (
+          (queueRank !== a.queueRank || queueTotal !== a.queueTotal) &&
+          (a.status === 'Pending Review' || a.status === 'Interview Scheduled')
+        ) {
+          updateApplication(a.id, {
+            queueRank,
+            queueTotal,
+            storedQueueRank: queueRank,
+            storedQueueTotal: queueTotal,
+            petId: a.petId,
+          }).catch(() => {})
+        }
 
         return {
           ...a,
@@ -112,8 +166,8 @@ export default function MyApplications() {
           submittedDateStr: dateStr,
           timestamp: getAppTimestamp(a),
           slaStatus,
-          queueRank: a.queueRank || 1,
-          queueTotal: a.queueTotal || 1,
+          queueRank,
+          queueTotal,
           pet: {
             ...matchedPet,
             ...pet,
@@ -140,8 +194,8 @@ export default function MyApplications() {
     load()
   }, [user?.uid])
 
-  const cancel = async (id) => {
-    await updateApplication(id, { status: 'Cancelled' })
+  const cancel = async (id, petId) => {
+    await updateApplication(id, { status: 'Cancelled', petId })
     load()
   }
 
@@ -291,7 +345,7 @@ export default function MyApplications() {
                       </span>
                       {a.status === 'Pending Review' && (
                         <button
-                          onClick={() => cancel(a.id)}
+                          onClick={() => cancel(a.id, a.petId)}
                           className="rounded-xl border border-line px-3 py-1 text-xs font-semibold text-ink-muted hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
                         >
                           Withdraw

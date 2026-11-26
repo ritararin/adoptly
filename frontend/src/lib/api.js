@@ -368,13 +368,99 @@ export async function getRecommendations(uid, profile, options = {}) {
   }
 }
 
+// ---------- Pet Adoption Queue Tracking (FIFO) ----------
+
+export async function getPetQueueEntries(petId) {
+  if (!petId) return []
+  try {
+    const snap = await getDocs(collection(db, 'petQueues', petId, 'entries'))
+    return snap.docs.map(withId)
+  } catch (err) {
+    console.warn(`Could not fetch pet queue entries for pet ${petId}:`, err)
+    return []
+  }
+}
+
+export async function recordPetQueueEntry(petId, appId, entryData) {
+  if (!petId || !appId) return
+  try {
+    const entryRef = doc(db, 'petQueues', petId, 'entries', appId)
+    await setDoc(
+      entryRef,
+      {
+        appId,
+        petId,
+        ...entryData,
+      },
+      { merge: true }
+    )
+  } catch (err) {
+    console.warn(`Could not record pet queue entry for pet ${petId}, app ${appId}:`, err)
+  }
+}
+
+export async function updatePetQueueEntry(petId, appId, updateData) {
+  if (!petId || !appId) return
+  try {
+    const entryRef = doc(db, 'petQueues', petId, 'entries', appId)
+    await setDoc(entryRef, updateData, { merge: true })
+  } catch (err) {
+    console.warn(`Could not update pet queue entry for pet ${petId}, app ${appId}:`, err)
+  }
+}
+
 // ---------- Applications (FR-07) ----------
-export const submitApplication = (data) =>
-  addDoc(collection(db, 'adoptionApplications'), {
+
+export async function submitApplication(data) {
+  const petId = data.petId
+  let queueRank = 1
+  let queueTotal = 1
+
+  // 1. Determine active queue length for this pet to stamp initial rank
+  if (petId) {
+    try {
+      const existingEntries = await getPetQueueEntries(petId)
+      const active = existingEntries.filter(
+        (e) => e.status === 'Pending Review' || e.status === 'Interview Scheduled'
+      )
+      queueRank = active.length + 1
+      queueTotal = queueRank
+    } catch (err) {
+      console.warn('Could not inspect active queue length on submit:', err)
+    }
+  }
+
+  // 2. Create the application document
+  const appRef = await addDoc(collection(db, 'adoptionApplications'), {
     ...data,
     status: 'Pending Review',
     submittedDate: serverTimestamp(),
+    queueRank,
+    queueTotal,
+    storedQueueRank: queueRank,
+    storedQueueTotal: queueTotal,
   })
+
+  // 3. Record the queue entry in petQueues/{petId}/entries/{appId}
+  if (petId) {
+    try {
+      await recordPetQueueEntry(petId, appRef.id, {
+        appId: appRef.id,
+        petId,
+        adopterId: data.adopterId,
+        status: 'Pending Review',
+        submittedDate: serverTimestamp(),
+        submittedAt: Date.now(),
+        queueRank,
+        queueTotal,
+      })
+    } catch (err) {
+      console.warn('Could not record pet queue entry in petQueues:', err)
+    }
+  }
+
+  return appRef
+}
 
 export async function listApplications({ adopterId, shelterId } = {}) {
   const clauses = []
@@ -389,8 +475,31 @@ export async function getApplication(id) {
   return s.exists() ? withId(s) : null
 }
 
-export const updateApplication = (id, data) =>
-  updateDoc(doc(db, 'adoptionApplications', id), data)
+export async function updateApplication(id, data) {
+  await updateDoc(doc(db, 'adoptionApplications', id), data)
+
+  // Synchronize status and queue ranking to petQueues/{petId}/entries/{id}
+  if (data.status || data.queueRank || data.queueTotal) {
+    try {
+      let petId = data.petId
+      if (!petId) {
+        const snap = await getDoc(doc(db, 'adoptionApplications', id))
+        if (snap.exists()) {
+          petId = snap.data()?.petId
+        }
+      }
+      if (petId) {
+        const queuePatch = {}
+        if (data.status) queuePatch.status = data.status
+        if (data.queueRank) queuePatch.queueRank = data.queueRank
+        if (data.queueTotal) queuePatch.queueTotal = data.queueTotal
+        await updatePetQueueEntry(petId, id, queuePatch)
+      }
+    } catch (err) {
+      console.warn('Non-blocking sync to petQueues failed in updateApplication:', err)
+    }
+  }
+}
 
 // ---------- Admin (FR-08) ----------
 export async function listUsers() {
