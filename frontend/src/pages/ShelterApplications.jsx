@@ -27,7 +27,7 @@ export default function ShelterApplications() {
   const { user } = useAuth()
   const [apps, setApps] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // 'all' | 'Pending Review' | 'Interview Scheduled' | 'Adoption Completed'
+  const [filter, setFilter] = useState('valid') // 'valid' (default) | 'Pending Review' | 'Interview Scheduled' | 'resolved' | 'all'
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -91,16 +91,36 @@ export default function ShelterApplications() {
       .finally(() => setLoading(false))
   }, [user?.uid])
 
+  const isValidRequest = (a) => a.status === 'Pending Review' || a.status === 'Interview Scheduled'
+  const isResolvedRequest = (a) =>
+    a.status === 'Adoption Completed' ||
+    a.status === 'Rejected' ||
+    a.status === 'Cancelled' ||
+    a.status === 'Failed Adoption'
+
+  const validCount = apps.filter(isValidRequest).length
+  const pendingCount = apps.filter(a => a.status === 'Pending Review').length
+  const interviewCount = apps.filter(a => a.status === 'Interview Scheduled').length
+  const resolvedCount = apps.filter(isResolvedRequest).length
+
   const filteredApps = apps.filter(a => {
-    const matchesFilter = filter === 'all' || a.status === filter
+    let matchesFilter = true
+    if (filter === 'valid') {
+      matchesFilter = isValidRequest(a)
+    } else if (filter === 'resolved') {
+      matchesFilter = isResolvedRequest(a)
+    } else if (filter !== 'all') {
+      matchesFilter = a.status === filter
+    }
+
     const matchesSearch =
       (a.adopterName || '').toLowerCase().includes(search.toLowerCase()) ||
       (a.petName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (a.shelterLocation || '').toLowerCase().includes(search.toLowerCase())
+      (a.shelterLocation || '').toLowerCase().includes(search.toLowerCase()) ||
+      (a.status || '').toLowerCase().includes(search.toLowerCase())
+
     return matchesFilter && matchesSearch
   })
-
-  const pendingCount = apps.filter(a => a.status === 'Pending Review').length
 
   if (loading) {
     return (
@@ -126,72 +146,53 @@ export default function ShelterApplications() {
             Review Queue
           </h1>
           <p className="mt-2 text-sm text-ink-muted max-w-xl">
-            Review applicant lifestyle submissions, evaluate ML compatibility scores, and schedule virtual verification interviews.
+            Review applicant lifestyle submissions, evaluate compatibility scores, and schedule virtual verification interviews.
           </p>
         </div>
 
-        {pendingCount > 0 && (
-          <div className="self-start sm:self-auto rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800">
-            {pendingCount} application{pendingCount === 1 ? '' : 's'} awaiting review
+        {validCount > 0 ? (
+          <div className="self-start sm:self-auto rounded-xl border border-forest/20 bg-forest-wash px-3.5 py-2 text-xs font-bold text-forest shadow-2xs">
+            {validCount} active request{validCount === 1 ? '' : 's'} awaiting action
+          </div>
+        ) : (
+          <div className="self-start sm:self-auto rounded-xl border border-line bg-cream-soft px-3.5 py-2 text-xs font-medium text-ink-muted">
+            Queue clear
           </div>
         )}
       </div>
 
-      {/* Review Order Guide */}
-      <div className="rounded-2xl border border-forest/15 bg-forest-wash/40 p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-forest text-cream shadow-2xs mt-0.5">
-              <Scale size={18} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-serif text-sm font-bold text-ink-head">
-                  Application Review Order
-                </h2>
-                <span className="rounded-full bg-forest/10 px-2 py-0.5 text-[10px] font-bold text-forest">
-                  48h Target
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-ink-muted leading-relaxed max-w-2xl">
-                Applications for each pet are organized by submission time. Review Applicant #1 first and schedule their virtual meeting within the 48-hour window.
-              </p>
-            </div>
-          </div>
-          <div className="shrink-0 self-start sm:self-auto">
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-forest/20 bg-white px-3 py-1.5 text-xs font-semibold text-forest shadow-2xs">
-              <ShieldCheck size={14} />
-              <span>First-come, first-served</span>
-            </span>
-          </div>
+      {/* Clean Queue Presence Indicator (replaces lengthy 48h review target banner) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-soft bg-white px-4 py-2.5 text-xs shadow-2xs">
+        <div className="flex items-center gap-2 text-ink-muted">
+          <span className="flex size-2 rounded-full bg-forest animate-pulse" />
+          <span className="font-bold text-ink-head">FIFO Adoption Queue Active</span>
+          <span className="text-ink-whisper">·</span>
+          <span>Sorted in chronological order of submission</span>
         </div>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-forest/20 bg-forest-wash px-2.5 py-1 text-[11px] font-bold text-forest">
+          <Clock size={12} />
+          <span>Applicant #1 holds priority review</span>
+        </span>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Filter Tabs and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5">
           {[
-            { id: 'all', label: 'All Applications', count: apps.length },
+            { id: 'valid', label: 'Valid Requests', count: validCount },
             { id: 'Pending Review', label: 'Pending Review', count: pendingCount },
-            {
-              id: 'Interview Scheduled',
-              label: 'Interviews',
-              count: apps.filter(a => a.status === 'Interview Scheduled').length,
-            },
-            {
-              id: 'Adoption Completed',
-              label: 'Completed',
-              count: apps.filter(a => a.status === 'Adoption Completed').length,
-            },
+            { id: 'Interview Scheduled', label: 'Interviews', count: interviewCount },
+            { id: 'resolved', label: 'Approved & Rejected', count: resolvedCount },
+            { id: 'all', label: 'All Applications', count: apps.length },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs transition-all cursor-pointer ${
                 filter === tab.id
                   ? 'bg-forest text-cream shadow-xs font-bold'
-                  : 'bg-white border border-line text-ink-muted hover:border-forest/30 hover:text-ink-head'
+                  : 'bg-white border border-line text-ink-muted hover:border-forest/30 hover:text-ink-head font-semibold'
               }`}
             >
               {tab.label} ({tab.count})
@@ -218,9 +219,23 @@ export default function ShelterApplications() {
           <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-cream-dim text-ink-whisper mb-3">
             <Inbox size={28} />
           </div>
-          <h3 className="font-serif text-lg font-bold text-ink-head">No applications found</h3>
-          <p className="mt-1 text-xs text-ink-muted">
-            {search ? 'Try adjusting your search criteria.' : 'No applications match this filter.'}
+          <h3 className="font-serif text-lg font-bold text-ink-head">
+            {search
+              ? 'No applications match your search'
+              : filter === 'valid'
+              ? 'All caught up!'
+              : filter === 'resolved'
+              ? 'No approved or rejected applications yet'
+              : 'No applications found'}
+          </h3>
+          <p className="mt-1 text-xs text-ink-muted max-w-sm mx-auto">
+            {search
+              ? 'Try adjusting your search terms.'
+              : filter === 'valid'
+              ? 'There are no active or pending requests requiring shelter action right now.'
+              : filter === 'resolved'
+              ? 'Applications you approve or reject will be stored here to keep your active queue uncluttered.'
+              : 'No applications match this filter.'}
           </p>
         </div>
       ) : (
