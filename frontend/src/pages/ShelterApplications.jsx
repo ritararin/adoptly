@@ -291,13 +291,10 @@ export default function ShelterApplications() {
                             </span>
                           )}
 
-                          {/* 48-Hour Review SLA Pill for Priority Applicant */}
-                          {a.queueRank === 1 && a.status === 'Pending Review' && a.slaStatus && (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] ${a.slaStatus.badgeColor}`}
-                            >
-                              <Clock size={10} />
-                              <span>{a.slaStatus.text}</span>
+                          {/* Priority Indicator for First Applicant */}
+                          {a.queueRank === 1 && a.status === 'Pending Review' && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-forest/10 text-forest border border-forest/20 px-2 py-0.5 text-[10px] font-bold">
+                              <span>Next to review</span>
                             </span>
                           )}
 

@@ -210,78 +210,44 @@ export default function ApplicationReview() {
         <StatusBadge status={a.status} />
       </div>
 
-      {/* FIFO Adoption Queue & 48-Hour SLA Status Banner */}
+      {/* FIFO Adoption Queue Presence Indicator */}
       {queueInfo && (
         <div
-          className={`rounded-[22px] border p-5 shadow-2xs ${
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 shadow-2xs ${
             queueInfo.rank === 1
-              ? 'border-forest/30 bg-forest-wash/40'
-              : 'border-amber-200 bg-amber-50/50'
+              ? 'border-forest/30 bg-forest-wash/30'
+              : 'border-line-soft bg-cream-soft/50'
           }`}
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div
-                className={`flex size-10 shrink-0 items-center justify-center rounded-2xl shadow-2xs mt-0.5 ${
-                  queueInfo.rank === 1
-                    ? 'bg-forest text-cream'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                <Scale size={20} />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-bold ${
-                      queueInfo.rank === 1
-                        ? 'bg-forest text-cream'
-                        : 'bg-amber-100 text-amber-900 border border-amber-300'
-                    }`}
-                  >
-                    {queueInfo.rank === 1
-                      ? 'Queue Position: #1 Priority Candidate'
-                      : `Queue Position: #${queueInfo.rank} in Line (of ${queueInfo.total})`}
-                  </span>
-
-                  {queueInfo.rank === 1 && a.status === 'Pending Review' && queueInfo.slaStatus && (
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold ${queueInfo.slaStatus.badgeColor}`}
-                    >
-                      <Clock size={12} />
-                      <span>{queueInfo.slaStatus.text}</span>
-                    </span>
-                  )}
-
-                  {a.status === 'Interview Scheduled' && (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 text-xs font-bold">
-                      <Video size={12} />
-                      <span>Interview Stage Active</span>
-                    </span>
-                  )}
-                </div>
-
-                <p className="mt-2 text-xs text-ink-muted leading-relaxed max-w-2xl">
-                  {queueInfo.rank === 1 ? (
-                    <>
-                      This applicant applied first for <strong>“{a.petName}”</strong>. Please review their profile and schedule a video interview within the 48-hour target.
-                    </>
-                  ) : (
-                    <>
-                      Applicant #{queueInfo.rank} is in line behind earlier candidates. If the earlier applicant does not proceed, this application will be next in line for review.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="shrink-0 self-start sm:self-center">
-              <span className="inline-flex items-center gap-1 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted shadow-2xs">
-                <ShieldCheck size={14} className="text-forest" />
-                <span>Review Order</span>
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
+                queueInfo.rank === 1
+                  ? 'bg-forest text-cream'
+                  : 'bg-cream-dim text-ink-head border border-line'
+              }`}
+            >
+              <span>Queue #{queueInfo.rank || 1}{queueInfo.total ? ` of ${queueInfo.total}` : ''}</span>
+            </span>
+            <p className="text-xs text-ink-muted">
+              {queueInfo.rank === 1 ? (
+                <>
+                  First in line for <strong className="text-ink-head">“{a.petName}”</strong>.
+                </>
+              ) : (
+                <>
+                  In line behind earlier applicants for <strong className="text-ink-head">“{a.petName}”</strong>.
+                </>
+              )}
+            </p>
           </div>
+
+          {a.status === 'Interview Scheduled' && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 text-xs font-bold">
+              <Video size={13} />
+              <span>Interview Scheduled</span>
+            </span>
+          )}
         </div>
       )}
 
