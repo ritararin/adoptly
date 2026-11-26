@@ -264,11 +264,11 @@ export default function ApplicationReview() {
                 <p className="mt-2 text-xs text-ink-muted leading-relaxed max-w-2xl">
                   {queueInfo.rank === 1 ? (
                     <>
-                      <strong>Non-Discriminatory First-In, First-Evaluated Protocol:</strong> This applicant was first to apply for <strong>“{a.petName}”</strong> among candidates with matching living conditions. Shelters evaluate Applicant #1 within a <strong>48-Hour Review SLA</strong> before proceeding to subsequent applicants.
+                      This applicant applied first for <strong>“{a.petName}”</strong>. Please review their profile and schedule a video interview within the 48-hour target.
                     </>
                   ) : (
                     <>
-                      <strong>Fair FIFO Queue Active:</strong> Candidate #{queueInfo.rank} is queued behind earlier qualified applicant(s). Under Adoptly’s non-discriminatory protocol, subsequent applicants are evaluated in submission order if earlier candidates do not complete adoption.
+                      Applicant #{queueInfo.rank} is in line behind earlier candidates. If the earlier applicant does not proceed, this application will be next in line for review.
                     </>
                   )}
                 </p>
@@ -276,9 +276,9 @@ export default function ApplicationReview() {
             </div>
 
             <div className="shrink-0 self-start sm:self-center">
-              <span className="inline-flex items-center gap-1 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink-muted shadow-2xs">
+              <span className="inline-flex items-center gap-1 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted shadow-2xs">
                 <ShieldCheck size={14} className="text-forest" />
-                <span>Fair Evaluation</span>
+                <span>Review Order</span>
               </span>
             </div>
           </div>

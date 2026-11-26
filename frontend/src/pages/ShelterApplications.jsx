@@ -122,8 +122,8 @@ export default function ShelterApplications() {
         )}
       </div>
 
-      {/* Fair FIFO Queue & 48h SLA Banner */}
-      <div className="rounded-[22px] border border-forest/20 bg-forest-wash/50 p-4 shadow-2xs">
+      {/* Review Order Guide */}
+      <div className="rounded-2xl border border-forest/15 bg-forest-wash/40 p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-forest text-cream shadow-2xs mt-0.5">
@@ -132,21 +132,21 @@ export default function ShelterApplications() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-serif text-sm font-bold text-ink-head">
-                  Fair First-In, First-Evaluated (FIFO) Queue Active
+                  Application Review Order
                 </h2>
                 <span className="rounded-full bg-forest/10 px-2 py-0.5 text-[10px] font-bold text-forest">
-                  48-Hour Review SLA
+                  48h Target
                 </span>
               </div>
               <p className="mt-1 text-xs text-ink-muted leading-relaxed max-w-2xl">
-                When multiple adopters match with the same living conditions, applications are reviewed strictly in chronological order. Applicant #1 is prioritized under a 48-hour SLA to schedule a virtual Google Meet interview before subsequent candidates are evaluated.
+                Applications for each pet are organized by submission time. Review Applicant #1 first and schedule their virtual meeting within the 48-hour window.
               </p>
             </div>
           </div>
-          <div className="shrink-0 self-start sm:self-center">
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-forest/20 bg-white px-3 py-1.5 text-xs font-bold text-forest shadow-2xs">
+          <div className="shrink-0 self-start sm:self-auto">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-forest/20 bg-white px-3 py-1.5 text-xs font-semibold text-forest shadow-2xs">
               <ShieldCheck size={14} />
-              <span>Non-Discriminatory</span>
+              <span>First-come, first-served</span>
             </span>
           </div>
         </div>

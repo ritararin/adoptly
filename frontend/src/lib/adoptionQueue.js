@@ -35,7 +35,7 @@ export function getSlaStatus(app) {
       hoursLeft: SLA_HOURS,
       overdueHours: 0,
       isBreached: false,
-      text: `${SLA_HOURS}h remaining in 48h SLA`,
+      text: `${SLA_HOURS}h review window`,
       badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
     }
   }
@@ -51,8 +51,8 @@ export function getSlaStatus(app) {
       hoursLeft: 0,
       overdueHours,
       isBreached: true,
-      text: overdueHours > 0 ? `SLA Overdue (${overdueHours}h)` : 'SLA Overdue',
-      badgeColor: 'bg-rose-50 text-rose-800 border-rose-300 font-bold',
+      text: 'Shelter reviewing now',
+      badgeColor: 'bg-cream-dim text-ink-head border-line font-medium',
     }
   }
 
@@ -60,11 +60,11 @@ export function getSlaStatus(app) {
     hoursLeft,
     overdueHours: 0,
     isBreached: false,
-    text: `${hoursLeft}h left in review SLA`,
+    text: `${hoursLeft}h review window`,
     badgeColor:
       hoursLeft <= 12
-        ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
-        : 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        ? 'bg-amber-50 text-amber-900 border-amber-200 font-medium'
+        : 'bg-emerald-50 text-emerald-800 border-emerald-200 font-medium',
   }
 }
 

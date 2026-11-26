@@ -25,8 +25,6 @@ import {
   ChevronUp,
   MapPin,
   Building2,
-  Scale,
-  ShieldCheck,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -185,20 +183,6 @@ export default function MyApplications() {
         </p>
       </div>
 
-      {/* Fair FIFO Policy Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-forest/15 bg-forest-wash/40 px-5 py-3.5 shadow-2xs">
-        <div className="flex items-center gap-2.5 text-xs text-ink-muted">
-          <Scale size={16} className="text-forest shrink-0" />
-          <span>
-            <strong className="text-ink-head">Fair FIFO Queue Active:</strong> When multiple adopters match with the same living conditions, applications are evaluated in strict chronological order under a 48-hour review SLA to eliminate selection bias.
-          </span>
-        </div>
-        <span className="inline-flex items-center gap-1 self-start sm:self-auto rounded-lg border border-forest/20 bg-white px-2.5 py-1 text-[11px] font-bold text-forest shadow-2xs">
-          <ShieldCheck size={13} />
-          <span>Non-Discriminatory</span>
-        </span>
-      </div>
-
       {apps.length === 0 ? (
         <div className="relative overflow-hidden rounded-[28px] border border-line bg-white p-12 text-center shadow-soft">
           <div className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-forest-wash text-forest shadow-sm">
@@ -316,30 +300,28 @@ export default function MyApplications() {
                     </div>
                   </div>
 
-                  {/* FIFO Queue & Review SLA Status Box for Pending Applications */}
+                  {/* Status Box for Pending Applications */}
                   {a.status === 'Pending Review' && (
-                    <div className="mt-4 rounded-2xl border border-line/80 bg-cream-soft/60 p-4 space-y-2.5">
+                    <div className="mt-4 rounded-2xl border border-line/70 bg-cream-soft/50 p-4 space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ${
                               a.queueRank === 1 || !a.queueRank
                                 ? 'bg-forest text-cream shadow-2xs'
-                                : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-amber-100 text-amber-900 border border-amber-200'
                             }`}
                           >
-                            <Scale size={13} />
                             <span>
                               {a.queueRank === 1 || !a.queueRank
-                                ? 'Queue Position: #1 in Line'
-                                : `Queue Position: #${a.queueRank} in Line${a.queueTotal ? ` (of ${a.queueTotal})` : ''}`}
+                                ? '#1 in line'
+                                : `#${a.queueRank} in line${a.queueTotal ? ` (of ${a.queueTotal})` : ''}`}
                             </span>
                           </span>
 
-                          {/* 48-Hour SLA Status Pill for Priority Candidate */}
                           {(a.queueRank === 1 || !a.queueRank) && a.slaStatus && (
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${a.slaStatus.badgeColor}`}
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${a.slaStatus.badgeColor}`}
                             >
                               <Clock size={11} />
                               <span>{a.slaStatus.text}</span>
@@ -347,20 +329,19 @@ export default function MyApplications() {
                           )}
                         </div>
 
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-whisper">
-                          <ShieldCheck size={12} className="text-forest" />
-                          <span>Fair FIFO Scheduling</span>
+                        <span className="text-[11px] font-medium text-ink-muted">
+                          Application under review
                         </span>
                       </div>
 
                       <p className="text-xs text-ink-muted leading-relaxed">
                         {a.queueRank === 1 || !a.queueRank ? (
                           <>
-                            You are <strong className="text-forest">#1 in line</strong> for “{a.petName}”! Under Adoptly’s non-discriminatory placement policy, the shelter evaluates applications within a <strong>48-hour review SLA</strong> and will book your virtual Google Meet interview shortly.
+                            You're first in line for <strong className="text-ink-head">“{a.petName}”</strong>! The shelter is reviewing your application and will reach out to schedule a video chat.
                           </>
                         ) : (
                           <>
-                            You are <strong className="text-ink-head">#{a.queueRank} in line</strong> for “{a.petName}”. When multiple adopters match with the same living conditions, Adoptly evaluates candidates in strict chronological order to eliminate arbitrary bias. If an earlier applicant does not proceed, your application is next.
+                            You're #{a.queueRank} in line for <strong className="text-ink-head">“{a.petName}”</strong>. Applications are reviewed in the order received. If the earlier applicant doesn't adopt, you're up next!
                           </>
                         )}
                       </p>
