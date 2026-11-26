@@ -75,22 +75,6 @@ export default function MatchBreakdown({ contributions = [] }) {
           )
         })}
       </div>
-
-      {/* Symbol-Based Legend */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-3 text-[11px] text-ink-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800">
-            +
-          </span>
-          <span><strong>+ / ++</strong> Factor boosts compatibility</span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-flex size-4 items-center justify-center rounded-full bg-rose-100 text-[10px] font-bold text-rose-800">
-            -
-          </span>
-          <span><strong>- / --</strong> Lifestyle consideration / trade-off</span>
-        </span>
-      </div>
     </div>
   )
 }

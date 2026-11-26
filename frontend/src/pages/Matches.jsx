@@ -750,11 +750,6 @@ export default function Matches() {
                       </div>
                     )
                   })}
-
-                  <div className="flex items-center justify-between text-[10px] text-ink-whisper pt-1">
-                    <span><strong>+ / ++</strong> Factor boosts compatibility</span>
-                    <span><strong>- / --</strong> Lifestyle consideration</span>
-                  </div>
                 </div>
               )}
             </motion.div>
