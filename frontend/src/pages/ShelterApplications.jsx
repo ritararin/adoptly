@@ -150,29 +150,21 @@ export default function ShelterApplications() {
           </p>
         </div>
 
-        {validCount > 0 ? (
-          <div className="self-start sm:self-auto rounded-xl border border-forest/20 bg-forest-wash px-3.5 py-2 text-xs font-bold text-forest shadow-2xs">
-            {validCount} active request{validCount === 1 ? '' : 's'} awaiting action
-          </div>
-        ) : (
-          <div className="self-start sm:self-auto rounded-xl border border-line bg-cream-soft px-3.5 py-2 text-xs font-medium text-ink-muted">
-            Queue clear
-          </div>
-        )}
-      </div>
-
-      {/* Clean Queue Presence Indicator (replaces lengthy 48h review target banner) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-soft bg-white px-4 py-2.5 text-xs shadow-2xs">
-        <div className="flex items-center gap-2 text-ink-muted">
-          <span className="flex size-2 rounded-full bg-forest animate-pulse" />
-          <span className="font-bold text-ink-head">FIFO Adoption Queue Active</span>
-          <span className="text-ink-whisper">·</span>
-          <span>Sorted in chronological order of submission</span>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink-muted shadow-2xs">
+            <span className="flex size-2 rounded-full bg-forest" />
+            <span>Queue: earliest first</span>
+          </span>
+          {validCount > 0 ? (
+            <div className="rounded-xl border border-forest/20 bg-forest-wash px-3.5 py-2 text-xs font-bold text-forest shadow-2xs">
+              {validCount} active request{validCount === 1 ? '' : 's'}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-line bg-cream-soft px-3.5 py-2 text-xs font-medium text-ink-muted">
+              Queue clear
+            </div>
+          )}
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-forest/20 bg-forest-wash px-2.5 py-1 text-[11px] font-bold text-forest">
-          <Clock size={12} />
-          <span>Applicant #1 holds priority review</span>
-        </span>
       </div>
 
       {/* Filter Tabs and Search Bar */}
@@ -180,11 +172,11 @@ export default function ShelterApplications() {
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5">
           {[
-            { id: 'valid', label: 'Valid Requests', count: validCount },
+            { id: 'valid', label: 'Active Requests', count: validCount },
             { id: 'Pending Review', label: 'Pending Review', count: pendingCount },
             { id: 'Interview Scheduled', label: 'Interviews', count: interviewCount },
             { id: 'resolved', label: 'Approved & Rejected', count: resolvedCount },
-            { id: 'all', label: 'All Applications', count: apps.length },
+            { id: 'all', label: 'All', count: apps.length },
           ].map(tab => (
             <button
               key={tab.id}

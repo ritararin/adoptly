@@ -210,8 +210,8 @@ export default function ApplicationReview() {
         <StatusBadge status={a.status} />
       </div>
 
-      {/* FIFO Adoption Queue Presence Indicator */}
-      {queueInfo && (
+      {/* Queue Presence Indicator (only for active queued applications) */}
+      {queueInfo && queueInfo.rank != null && (
         <div
           className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 shadow-2xs ${
             queueInfo.rank === 1
@@ -227,7 +227,7 @@ export default function ApplicationReview() {
                   : 'bg-cream-dim text-ink-head border border-line'
               }`}
             >
-              <span>Queue #{queueInfo.rank || 1}{queueInfo.total ? ` of ${queueInfo.total}` : ''}</span>
+              <span>Queue #{queueInfo.rank}{queueInfo.total ? ` of ${queueInfo.total}` : ''}</span>
             </span>
             <p className="text-xs text-ink-muted">
               {queueInfo.rank === 1 ? (
