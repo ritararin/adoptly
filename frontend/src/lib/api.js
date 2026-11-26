@@ -295,6 +295,7 @@ export async function getRecommendations(uid, profile, options = {}) {
         ...scorePair(profile, pet),
       }))
       .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+      .slice(0, 30)
     recommendationsCache = {
       key: cacheKey,
       uid,
@@ -306,7 +307,7 @@ export async function getRecommendations(uid, profile, options = {}) {
   }
 
   try {
-    const apiResult = await getBatchRecommendations(pets, profile)
+    const apiResult = await getBatchRecommendations(pets, profile, 30)
     const recs = apiResult?.recommendations || []
     const petsById = Object.fromEntries(pets.map((p) => [p.id, p]))
 
@@ -357,6 +358,7 @@ export async function getRecommendations(uid, profile, options = {}) {
         ...scorePair(profile, pet),
       }))
       .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+      .slice(0, 30)
     recommendationsCache = {
       key: cacheKey,
       uid,

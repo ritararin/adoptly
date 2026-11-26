@@ -640,7 +640,7 @@ def recommend():
     data = request.get_json(silent=True) or {}
     adopter = data.get("adopter", {})
     pets = data.get("pets", [])
-    top_n = min(data.get("top_n", 5), 20)
+    top_n = min(int(data.get("top_n", 30)), 30)
 
     if not isinstance(pets, list) or len(pets) == 0:
         return jsonify({"recommendations": [], "not_recommended": [], "pets_scored": 0, "disclaimer": DISCLAIMER}), 200

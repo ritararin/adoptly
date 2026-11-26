@@ -46,7 +46,7 @@ export async function getCompatibility(arg1, arg2) {
   }
 }
 
-export async function getBatchRecommendations(pets, adopter, topN = 10) {
+export async function getBatchRecommendations(pets, adopter, topN = 30) {
   const user = getAuth().currentUser
   if (!user) throw new Error('Please log in first.')
   const token = await user.getIdToken()
